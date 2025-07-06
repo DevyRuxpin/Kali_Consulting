@@ -466,7 +466,7 @@ mypy app/
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+Commercial Use Forbidden, Open Source Otherwise, Kali Consulting LLC
 
 ## 🆘 Support
 
