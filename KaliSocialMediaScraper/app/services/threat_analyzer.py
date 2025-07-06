@@ -8,7 +8,6 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime
 import re
 
-from app.core.config import settings
 from app.models.schemas import ThreatAssessment, ThreatLevel
 
 logger = logging.getLogger(__name__)

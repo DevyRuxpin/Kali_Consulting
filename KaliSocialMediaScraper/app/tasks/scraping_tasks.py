@@ -13,6 +13,7 @@ from app.services.github_scraper import GitHubScraper
 from app.services.social_media_scraper import SocialMediaScraper
 from app.services.domain_analyzer import DomainAnalyzer
 from app.repositories.investigation_repository import InvestigationRepository
+from app.models.schemas import PlatformType
 
 logger = logging.getLogger(__name__)
 
@@ -37,8 +38,8 @@ def scrape_github_repository_task(self, repository_url: str, investigation_id: O
             meta={"status": "Scraping repository", "progress": 30}
         )
         
-        # Scrape repository
-        repo_data = await github_scraper.scrape_repository(repository_url)
+        # Scrape repository (full analysis)
+        repo_data = asyncio.run(github_scraper.analyze_repository_async(repository_url))
         
         # Update task status
         self.update_state(
@@ -46,8 +47,8 @@ def scrape_github_repository_task(self, repository_url: str, investigation_id: O
             meta={"status": "Analyzing repository", "progress": 70}
         )
         
-        # Analyze repository for threats
-        threat_assessment = await github_scraper.assess_repository_threats(repo_data)
+        # Analyze repository for threats (already included in repo_data)
+        threat_assessment = repo_data.get("threat_assessment")
         
         # Update task status
         self.update_state(
@@ -58,7 +59,7 @@ def scrape_github_repository_task(self, repository_url: str, investigation_id: O
         # Save data if investigation_id provided
         if investigation_id:
             investigation_repo = InvestigationRepository()
-            await investigation_repo.add_github_data(investigation_id, repo_data)
+            asyncio.run(investigation_repo.add_github_data(investigation_id, repo_data))
         
         # Update task status
         self.update_state(
@@ -103,8 +104,8 @@ def scrape_github_user_task(self, username: str, investigation_id: Optional[str]
             meta={"status": "Scraping user profile", "progress": 30}
         )
         
-        # Scrape user profile
-        user_data = await github_scraper.scrape_user(username)
+        # Scrape user profile (full analysis)
+        user_data = asyncio.run(github_scraper.analyze_user_profile(username))
         
         # Update task status
         self.update_state(
@@ -112,8 +113,8 @@ def scrape_github_user_task(self, username: str, investigation_id: Optional[str]
             meta={"status": "Scraping user repositories", "progress": 50}
         )
         
-        # Scrape user repositories
-        repositories = await github_scraper.scrape_user_repositories(username)
+        # Scrape user repositories (already included in user_data)
+        repositories = user_data.get("repositories")
         
         # Update task status
         self.update_state(
@@ -121,8 +122,8 @@ def scrape_github_user_task(self, username: str, investigation_id: Optional[str]
             meta={"status": "Analyzing user activity", "progress": 70}
         )
         
-        # Analyze user activity
-        activity_analysis = await github_scraper.analyze_user_activity(username)
+        # Analyze user activity (already included in user_data)
+        activity_analysis = user_data.get("activity")
         
         # Update task status
         self.update_state(
@@ -130,12 +131,12 @@ def scrape_github_user_task(self, username: str, investigation_id: Optional[str]
             meta={"status": "Assessing threats", "progress": 90}
         )
         
-        # Assess threats
-        threat_assessment = await github_scraper.assess_user_threats(user_data, repositories)
+        # Assess threats (already included in user_data)
+        threat_assessment = user_data.get("threat_assessment")
         
         # Combine all data
         combined_data = {
-            "user_profile": user_data,
+            "user_profile": user_data.get("user"),
             "repositories": repositories,
             "activity_analysis": activity_analysis,
             "threat_assessment": threat_assessment
@@ -144,7 +145,7 @@ def scrape_github_user_task(self, username: str, investigation_id: Optional[str]
         # Save data if investigation_id provided
         if investigation_id:
             investigation_repo = InvestigationRepository()
-            await investigation_repo.add_github_data(investigation_id, combined_data)
+            asyncio.run(investigation_repo.add_github_data(investigation_id, combined_data))
         
         # Update task status
         self.update_state(
@@ -188,8 +189,8 @@ def scrape_github_organization_task(self, org_name: str, investigation_id: Optio
             meta={"status": "Scraping organization profile", "progress": 30}
         )
         
-        # Scrape organization profile
-        org_data = await github_scraper.scrape_organization(org_name)
+        # Scrape organization profile (full analysis)
+        org_data = asyncio.run(github_scraper.analyze_organization(org_name))
         
         # Update task status
         self.update_state(
@@ -197,8 +198,8 @@ def scrape_github_organization_task(self, org_name: str, investigation_id: Optio
             meta={"status": "Scraping organization repositories", "progress": 50}
         )
         
-        # Scrape organization repositories
-        repositories = await github_scraper.scrape_organization_repositories(org_name)
+        # Scrape organization repositories (already included in org_data)
+        repositories = org_data.get("repositories")
         
         # Update task status
         self.update_state(
@@ -206,8 +207,8 @@ def scrape_github_organization_task(self, org_name: str, investigation_id: Optio
             meta={"status": "Scraping organization members", "progress": 70}
         )
         
-        # Scrape organization members
-        members = await github_scraper.scrape_organization_members(org_name)
+        # Scrape organization members (already included in org_data)
+        members = org_data.get("members")
         
         # Update task status
         self.update_state(
@@ -215,12 +216,12 @@ def scrape_github_organization_task(self, org_name: str, investigation_id: Optio
             meta={"status": "Assessing threats", "progress": 90}
         )
         
-        # Assess threats
-        threat_assessment = await github_scraper.assess_organization_threats(org_data, repositories, members)
+        # Assess threats (already included in org_data)
+        threat_assessment = org_data.get("threat_assessment")
         
         # Combine all data
         combined_data = {
-            "organization_profile": org_data,
+            "organization_profile": org_data.get("organization"),
             "repositories": repositories,
             "members": members,
             "threat_assessment": threat_assessment
@@ -229,7 +230,7 @@ def scrape_github_organization_task(self, org_name: str, investigation_id: Optio
         # Save data if investigation_id provided
         if investigation_id:
             investigation_repo = InvestigationRepository()
-            await investigation_repo.add_github_data(investigation_id, combined_data)
+            asyncio.run(investigation_repo.add_github_data(investigation_id, combined_data))
         
         # Update task status
         self.update_state(
@@ -273,8 +274,9 @@ def scrape_social_media_profile_task(self, platform: str, username: str, investi
             meta={"status": "Scraping profile", "progress": 30}
         )
         
-        # Scrape profile
-        profile_data = await social_scraper.scrape_platform_profile(platform, username)
+        # Scrape profile (full analysis)
+        platform_enum = PlatformType(platform)
+        profile_data = asyncio.run(social_scraper.analyze_profile(platform_enum, username))
         
         # Update task status
         self.update_state(
@@ -282,8 +284,8 @@ def scrape_social_media_profile_task(self, platform: str, username: str, investi
             meta={"status": "Scraping posts", "progress": 50}
         )
         
-        # Scrape recent posts
-        posts_data = await social_scraper.scrape_platform_posts(platform, username, limit=100)
+        # Scrape recent posts (already included in profile_data)
+        posts_data = profile_data.get("posts")
         
         # Update task status
         self.update_state(
@@ -291,8 +293,8 @@ def scrape_social_media_profile_task(self, platform: str, username: str, investi
             meta={"status": "Analyzing content", "progress": 70}
         )
         
-        # Analyze content sentiment
-        sentiment_analysis = await social_scraper.analyze_content_sentiment(posts_data)
+        # Analyze content sentiment (already included in profile_data)
+        sentiment_analysis = profile_data.get("sentiment_analysis")
         
         # Update task status
         self.update_state(
@@ -300,14 +302,14 @@ def scrape_social_media_profile_task(self, platform: str, username: str, investi
             meta={"status": "Assessing threats", "progress": 90}
         )
         
-        # Assess threats
-        threat_assessment = await social_scraper.assess_profile_threats(platform, profile_data, posts_data)
+        # Assess threats (already included in profile_data)
+        threat_assessment = profile_data.get("threat_assessment")
         
         # Combine all data
         combined_data = {
             "platform": platform,
             "username": username,
-            "profile_data": profile_data,
+            "profile_data": profile_data.get("profile"),
             "posts_data": posts_data,
             "sentiment_analysis": sentiment_analysis,
             "threat_assessment": threat_assessment
@@ -316,7 +318,7 @@ def scrape_social_media_profile_task(self, platform: str, username: str, investi
         # Save data if investigation_id provided
         if investigation_id:
             investigation_repo = InvestigationRepository()
-            await investigation_repo.add_social_media_data(investigation_id, combined_data)
+            asyncio.run(investigation_repo.add_social_media_data(investigation_id, combined_data))
         
         # Update task status
         self.update_state(
@@ -361,8 +363,8 @@ def analyze_domain_task(self, domain: str, investigation_id: Optional[str] = Non
             meta={"status": "Analyzing domain", "progress": 30}
         )
         
-        # Analyze domain
-        domain_data = await domain_analyzer.analyze_domain(domain)
+        # Analyze domain (full analysis)
+        domain_data = asyncio.run(domain_analyzer.analyze_domain(domain))
         
         # Update task status
         self.update_state(
@@ -370,8 +372,8 @@ def analyze_domain_task(self, domain: str, investigation_id: Optional[str] = Non
             meta={"status": "Enumerating subdomains", "progress": 50}
         )
         
-        # Enumerate subdomains
-        subdomains = await domain_analyzer.enumerate_subdomains(domain)
+        # Enumerate subdomains (already included in domain_data)
+        subdomains = domain_data.get("subdomains")
         
         # Update task status
         self.update_state(
@@ -379,8 +381,8 @@ def analyze_domain_task(self, domain: str, investigation_id: Optional[str] = Non
             meta={"status": "Detecting technologies", "progress": 70}
         )
         
-        # Detect technologies
-        technologies = await domain_analyzer.detect_technologies(domain)
+        # Detect technologies (already included in domain_data)
+        technologies = domain_data.get("technologies")
         
         # Update task status
         self.update_state(
@@ -388,8 +390,8 @@ def analyze_domain_task(self, domain: str, investigation_id: Optional[str] = Non
             meta={"status": "Assessing threats", "progress": 90}
         )
         
-        # Assess threats
-        threat_assessment = await domain_analyzer.assess_domain_threats(domain, domain_data, subdomains, technologies)
+        # Assess threats (already included in domain_data)
+        threat_assessment = domain_data.get("threat_assessment")
         
         # Combine all data
         combined_data = {
@@ -403,7 +405,7 @@ def analyze_domain_task(self, domain: str, investigation_id: Optional[str] = Non
         # Save data if investigation_id provided
         if investigation_id:
             investigation_repo = InvestigationRepository()
-            await investigation_repo.add_domain_data(investigation_id, combined_data)
+            asyncio.run(investigation_repo.add_domain_data(investigation_id, combined_data))
         
         # Update task status
         self.update_state(
@@ -457,7 +459,7 @@ def bulk_scrape_task(self, targets: List[Dict[str, Any]], investigation_id: Opti
             
             try:
                 if target_type == "github_repository":
-                    result = await scrape_github_repository_task.apply_async(
+                    result = scrape_github_repository_task.apply_async(
                         args=[target_value, investigation_id],
                         countdown=i * 2  # Stagger requests
                     )
@@ -468,7 +470,7 @@ def bulk_scrape_task(self, targets: List[Dict[str, Any]], investigation_id: Opti
                     })
                 
                 elif target_type == "github_user":
-                    result = await scrape_github_user_task.apply_async(
+                    result = scrape_github_user_task.apply_async(
                         args=[target_value, investigation_id],
                         countdown=i * 2
                     )
@@ -479,7 +481,7 @@ def bulk_scrape_task(self, targets: List[Dict[str, Any]], investigation_id: Opti
                     })
                 
                 elif target_type == "github_organization":
-                    result = await scrape_github_organization_task.apply_async(
+                    result = scrape_github_organization_task.apply_async(
                         args=[target_value, investigation_id],
                         countdown=i * 2
                     )
@@ -492,7 +494,7 @@ def bulk_scrape_task(self, targets: List[Dict[str, Any]], investigation_id: Opti
                 elif target_type == "social_media":
                     platform = target.get("platform")
                     username = target.get("username")
-                    result = await scrape_social_media_profile_task.apply_async(
+                    result = scrape_social_media_profile_task.apply_async(
                         args=[platform, username, investigation_id],
                         countdown=i * 2
                     )
@@ -503,7 +505,7 @@ def bulk_scrape_task(self, targets: List[Dict[str, Any]], investigation_id: Opti
                     })
                 
                 elif target_type == "domain":
-                    result = await analyze_domain_task.apply_async(
+                    result = analyze_domain_task.apply_async(
                         args=[target_value, investigation_id],
                         countdown=i * 2
                     )

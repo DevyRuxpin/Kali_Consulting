@@ -121,7 +121,7 @@ def update_platform_status_task(self) -> Dict[str, Any]:
         )
         
         # Save platform status
-        await save_platform_status(platforms)
+        asyncio.run(save_platform_status(platforms))
         
         # Update task status
         self.update_state(
@@ -157,7 +157,7 @@ def health_check_task(self) -> Dict[str, Any]:
         )
         
         # Check database connectivity
-        db_status = await check_database_health()
+        db_status = asyncio.run(check_database_health())
         
         # Update task status
         self.update_state(
@@ -166,7 +166,7 @@ def health_check_task(self) -> Dict[str, Any]:
         )
         
         # Check Redis connectivity
-        redis_status = await check_redis_health()
+        redis_status = asyncio.run(check_redis_health())
         
         # Update task status
         self.update_state(
@@ -208,7 +208,7 @@ def health_check_task(self) -> Dict[str, Any]:
         }
         
         # Save health report
-        await save_health_report(health_report)
+        asyncio.run(save_health_report(health_report))
         
         return health_report
         
@@ -305,7 +305,7 @@ def cleanup_investigations_task(self, days_old: int = 30) -> Dict[str, Any]:
         
         # Find old completed investigations
         cutoff_date = datetime.utcnow() - timedelta(days=days_old)
-        old_investigations = await investigation_repo.get_old_investigations(cutoff_date)
+        old_investigations = asyncio.run(investigation_repo.get_old_investigations(cutoff_date))
         
         # Update task status
         self.update_state(
@@ -317,7 +317,7 @@ def cleanup_investigations_task(self, days_old: int = 30) -> Dict[str, Any]:
         cleaned_count = 0
         for investigation in old_investigations:
             try:
-                await investigation_repo.delete_investigation(investigation.id)
+                asyncio.run(investigation_repo.delete_investigation(investigation.id))
                 cleaned_count += 1
                 logger.info(f"Cleaned up investigation: {investigation.id}")
             except Exception as e:
@@ -434,7 +434,7 @@ def monitor_system_resources_task(self) -> Dict[str, Any]:
         }
         
         # Save resource report
-        await save_resource_report(resource_report)
+        asyncio.run(save_resource_report(resource_report))
         
         return resource_report
         

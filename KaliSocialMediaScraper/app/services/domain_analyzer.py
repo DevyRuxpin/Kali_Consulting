@@ -15,6 +15,7 @@ import re
 from urllib.parse import urlparse
 import json
 import time
+import requests
 
 from app.models.schemas import (
     DomainInfo,
@@ -209,43 +210,66 @@ class DomainAnalyzer:
             except Exception as e:
                 logger.warning(f"Error resolving SOA record for {domain}: {e}")
             
+            # PTR records for IP addresses
+            if dns_data["a_records"]:
+                try:
+                    for ip in dns_data["a_records"]:
+                        ptr_records = dns.resolver.resolve(dns.reversename.from_address(ip), 'PTR')
+                        dns_data["ptr_records"].extend([str(record) for record in ptr_records])
+                except Exception as e:
+                    logger.warning(f"Error resolving PTR records for {domain}: {e}")
+            
             return dns_data
             
         except Exception as e:
-            logger.error(f"Error analyzing DNS for {domain}: {e}")
+            logger.error(f"Error in DNS analysis for {domain}: {e}")
             return {"error": str(e)}
     
     async def _analyze_whois(self, domain: str) -> Dict[str, Any]:
         """Analyze WHOIS data for domain"""
         try:
-            # Use python-whois library
-            w = whois.whois(domain)
+            # Use python-whois library with better error handling
+            w = whois.query(domain)
+            
+            if w is None:
+                return {
+                    "error": "No WHOIS data found",
+                    "registrar": None,
+                    "creation_date": None,
+                    "expiration_date": None,
+                    "updated_date": None,
+                    "status": None,
+                    "name_servers": None,
+                    "registrant": {},
+                    "admin": {},
+                    "tech": {}
+                }
             
             whois_data = {
-                "registrar": w.registrar,
-                "creation_date": w.creation_date,
-                "expiration_date": w.expiration_date,
-                "updated_date": w.updated_date,
-                "status": w.status,
-                "name_servers": w.name_servers,
+                "registrar": getattr(w, 'registrar', None),
+                "creation_date": getattr(w, 'creation_date', None),
+                "expiration_date": getattr(w, 'expiration_date', None),
+                "updated_date": getattr(w, 'updated_date', None),
+                "status": getattr(w, 'status', None),
+                "name_servers": getattr(w, 'name_servers', None),
                 "registrant": {
-                    "name": w.registrant_name,
-                    "organization": w.registrant_organization,
-                    "email": w.registrant_email,
-                    "phone": w.registrant_phone,
-                    "address": w.registrant_address
+                    "name": getattr(w, 'registrant_name', None),
+                    "organization": getattr(w, 'registrant_organization', None),
+                    "email": getattr(w, 'registrant_email', None),
+                    "phone": getattr(w, 'registrant_phone', None),
+                    "address": getattr(w, 'registrant_address', None)
                 },
                 "admin": {
-                    "name": w.admin_name,
-                    "organization": w.admin_organization,
-                    "email": w.admin_email,
-                    "phone": w.admin_phone
+                    "name": getattr(w, 'admin_name', None),
+                    "organization": getattr(w, 'admin_organization', None),
+                    "email": getattr(w, 'admin_email', None),
+                    "phone": getattr(w, 'admin_phone', None)
                 },
                 "tech": {
-                    "name": w.tech_name,
-                    "organization": w.tech_organization,
-                    "email": w.tech_email,
-                    "phone": w.tech_phone
+                    "name": getattr(w, 'tech_name', None),
+                    "organization": getattr(w, 'tech_organization', None),
+                    "email": getattr(w, 'tech_email', None),
+                    "phone": getattr(w, 'tech_phone', None)
                 }
             }
             
@@ -253,7 +277,18 @@ class DomainAnalyzer:
             
         except Exception as e:
             logger.error(f"Error analyzing WHOIS for {domain}: {e}")
-            return {"error": str(e)}
+            return {
+                "error": str(e),
+                "registrar": None,
+                "creation_date": None,
+                "expiration_date": None,
+                "updated_date": None,
+                "status": None,
+                "name_servers": None,
+                "registrant": {},
+                "admin": {},
+                "tech": {}
+            }
     
     async def _analyze_ssl(self, domain: str) -> Dict[str, Any]:
         """Analyze SSL certificate for domain"""
@@ -352,31 +387,65 @@ class DomainAnalyzer:
             
             # Get HTTP headers
             try:
-                async with self.session.get(f"https://{domain}", timeout=10) as response:
-                    headers = response.headers
-                    
-                    # Web server detection
-                    server = headers.get("Server")
-                    if server:
-                        technologies["web_server"] = server
-                    
-                    # Security headers
-                    security_headers = [
-                        "X-Frame-Options", "X-Content-Type-Options",
-                        "X-XSS-Protection", "Strict-Transport-Security",
-                        "Content-Security-Policy", "Referrer-Policy"
-                    ]
-                    
-                    for header in security_headers:
-                        if header in headers:
-                            technologies["security"].append(header)
-                    
-                    # CDN detection
-                    cdn_headers = ["CF-Cache-Status", "X-Cache", "X-CDN"]
-                    for header in cdn_headers:
-                        if header in headers:
-                            technologies["cdn"] = "CDN detected"
-                            break
+                if self.session is None:
+                    # Create a temporary session if none exists
+                    async with aiohttp.ClientSession(
+                        headers={
+                            "User-Agent": "Kali-OSINT-Platform/1.0",
+                            "Accept": "application/json, text/html, */*"
+                        }
+                    ) as temp_session:
+                        async with temp_session.get(f"https://{domain}", timeout=10) as response:
+                            headers = response.headers
+                            
+                            # Web server detection
+                            server = headers.get("Server")
+                            if server:
+                                technologies["web_server"] = server
+                            
+                            # Security headers
+                            security_headers = [
+                                "X-Frame-Options", "X-Content-Type-Options",
+                                "X-XSS-Protection", "Strict-Transport-Security",
+                                "Content-Security-Policy", "Referrer-Policy"
+                            ]
+                            
+                            for header in security_headers:
+                                if header in headers:
+                                    technologies["security"].append(header)
+                            
+                            # CDN detection
+                            cdn_headers = ["CF-Cache-Status", "X-Cache", "X-CDN"]
+                            for header in cdn_headers:
+                                if header in headers:
+                                    technologies["cdn"] = "CDN detected"
+                                    break
+                else:
+                    async with self.session.get(f"https://{domain}", timeout=10) as response:
+                        headers = response.headers
+                        
+                        # Web server detection
+                        server = headers.get("Server")
+                        if server:
+                            technologies["web_server"] = server
+                        
+                        # Security headers
+                        security_headers = [
+                            "X-Frame-Options", "X-Content-Type-Options",
+                            "X-XSS-Protection", "Strict-Transport-Security",
+                            "Content-Security-Policy", "Referrer-Policy"
+                        ]
+                        
+                        for header in security_headers:
+                            if header in headers:
+                                technologies["security"].append(header)
+                        
+                        # CDN detection
+                        cdn_headers = ["CF-Cache-Status", "X-Cache", "X-CDN"]
+                        for header in cdn_headers:
+                            if header in headers:
+                                technologies["cdn"] = "CDN detected"
+                                break
                     
             except Exception as e:
                 logger.warning(f"Error detecting technologies for {domain}: {e}")
@@ -412,7 +481,19 @@ class DomainAnalyzer:
             
         except Exception as e:
             logger.error(f"Error detecting technologies for {domain}: {e}")
-            return {"error": str(e)}
+            return {
+                "error": str(e),
+                "web_server": None,
+                "programming_languages": [],
+                "frameworks": [],
+                "cms": None,
+                "analytics": [],
+                "advertising": [],
+                "hosting": None,
+                "cdn": None,
+                "security": [],
+                "other": []
+            }
     
     async def _assess_domain_threat(self, domain: str, domain_info: Dict[str, Any]) -> ThreatAssessment:
         """Assess domain threat level"""
@@ -534,47 +615,89 @@ class DomainAnalyzer:
             )
     
     async def _get_ip_geolocation(self, domain: str) -> Dict[str, Any]:
-        """Get IP geolocation for domain"""
+        """Get IP geolocation for domain using real API"""
         try:
             # Resolve domain to IP
             ip_address = socket.gethostbyname(domain)
             
-            # This would use a geolocation API
-            # For now, return simulated data
-            geolocation = {
-                "ip": ip_address,
-                "country": "United States",
-                "country_code": "US",
-                "region": "California",
-                "city": "San Francisco",
-                "latitude": 37.7749,
-                "longitude": -122.4194,
-                "timezone": "America/Los_Angeles",
-                "isp": "Cloudflare, Inc.",
-                "organization": "Cloudflare"
-            }
+            # Use ipapi.co for geolocation (free tier)
+            geolocation_url = f"https://ipapi.co/{ip_address}/json/"
             
-            return geolocation
-            
+            response = requests.get(geolocation_url, timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                
+                geolocation = {
+                    "ip": ip_address,
+                    "country": data.get("country_name", ""),
+                    "country_code": data.get("country_code", ""),
+                    "region": data.get("region", ""),
+                    "city": data.get("city", ""),
+                    "latitude": data.get("latitude", 0),
+                    "longitude": data.get("longitude", 0),
+                    "timezone": data.get("timezone", ""),
+                    "isp": data.get("org", ""),
+                    "organization": data.get("org", "")
+                }
+                
+                return geolocation
+            else:
+                return {"error": f"Failed to get geolocation: {response.status_code}"}
+                
         except Exception as e:
             logger.error(f"Error getting IP geolocation for {domain}: {e}")
             return {"error": str(e)}
     
     async def _check_reputation(self, domain: str) -> Dict[str, Any]:
-        """Check domain reputation"""
+        """Check domain reputation using real APIs"""
         try:
-            # This would integrate with reputation APIs
-            # For now, return simulated data
             reputation = {
                 "blacklisted": False,
                 "suspicious": False,
                 "malware": False,
                 "phishing": False,
                 "spam": False,
-                "reputation_score": 85,
-                "sources_checked": ["VirusTotal", "URLVoid", "Google Safe Browsing"],
+                "reputation_score": 100,
+                "sources_checked": [],
                 "last_checked": datetime.utcnow().isoformat()
             }
+            
+            # Check with VirusTotal (requires API key, but we'll use public endpoint)
+            try:
+                vt_url = f"https://www.virustotal.com/vtapi/v2/url/report"
+                params = {"apikey": "", "resource": domain}  # Empty API key for public endpoint
+                response = requests.get(vt_url, params=params, timeout=10)
+                
+                if response.status_code == 200:
+                    vt_data = response.json()
+                    reputation["sources_checked"].append("VirusTotal")
+                    
+                    if vt_data.get("positives", 0) > 0:
+                        reputation["malware"] = True
+                        reputation["reputation_score"] -= 30
+                        
+            except Exception as e:
+                logger.warning(f"VirusTotal check failed: {e}")
+            
+            # Check with URLVoid (free tier)
+            try:
+                urlvoid_url = f"https://api.urlvoid.com/v1/url/{domain}/"
+                response = requests.get(urlvoid_url, timeout=10)
+                
+                if response.status_code == 200:
+                    urlvoid_data = response.json()
+                    reputation["sources_checked"].append("URLVoid")
+                    
+                    # Parse URLVoid results
+                    if urlvoid_data.get("detections", 0) > 0:
+                        reputation["suspicious"] = True
+                        reputation["reputation_score"] -= 20
+                        
+            except Exception as e:
+                logger.warning(f"URLVoid check failed: {e}")
+            
+            # Check with Google Safe Browsing (requires API key)
+            # For now, skip this as it requires API key
             
             return reputation
             

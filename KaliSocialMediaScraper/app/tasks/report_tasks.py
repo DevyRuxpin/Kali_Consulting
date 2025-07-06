@@ -33,7 +33,7 @@ def generate_intelligence_report_task(self, investigation_id: str) -> Dict[str, 
         
         # Get investigation
         investigation_repo = InvestigationRepository()
-        investigation = await investigation_repo.get_investigation(investigation_id)
+        investigation = asyncio.run(investigation_repo.get_investigation(investigation_id))
         
         if not investigation:
             raise ValueError(f"Investigation {investigation_id} not found")
@@ -48,7 +48,7 @@ def generate_intelligence_report_task(self, investigation_id: str) -> Dict[str, 
         )
         
         # Run analysis if not already done
-        analysis_result = await intelligence_engine.analyze_investigation(investigation)
+        analysis_result = asyncio.run(intelligence_engine.analyze_investigation(investigation))
         
         # Update task status
         self.update_state(
@@ -57,7 +57,7 @@ def generate_intelligence_report_task(self, investigation_id: str) -> Dict[str, 
         )
         
         # Generate intelligence report
-        intelligence_report = await intelligence_engine.generate_intelligence_report(analysis_result)
+        intelligence_report = asyncio.run(intelligence_engine.generate_intelligence_report(analysis_result))
         
         # Update task status
         self.update_state(
@@ -66,7 +66,7 @@ def generate_intelligence_report_task(self, investigation_id: str) -> Dict[str, 
         )
         
         # Save report
-        await investigation_repo.save_intelligence_report(investigation_id, intelligence_report)
+        asyncio.run(investigation_repo.save_intelligence_report(investigation_id, intelligence_report))
         
         # Update task status
         self.update_state(
@@ -106,19 +106,19 @@ def generate_executive_summary_task(self, investigation_id: str) -> Dict[str, An
         
         # Get investigation
         investigation_repo = InvestigationRepository()
-        investigation = await investigation_repo.get_investigation(investigation_id)
+        investigation = asyncio.run(investigation_repo.get_investigation(investigation_id))
         
         if not investigation:
             raise ValueError(f"Investigation {investigation_id} not found")
         
         # Get existing intelligence report or generate new one
-        intelligence_report = await investigation_repo.get_intelligence_report(investigation_id)
+        intelligence_report = asyncio.run(investigation_repo.get_intelligence_report(investigation_id))
         
         if not intelligence_report:
             # Generate new report
             intelligence_engine = IntelligenceEngine()
-            analysis_result = await intelligence_engine.analyze_investigation(investigation)
-            intelligence_report = await intelligence_engine.generate_intelligence_report(analysis_result)
+            analysis_result = asyncio.run(intelligence_engine.analyze_investigation(investigation))
+            intelligence_report = asyncio.run(intelligence_engine.generate_intelligence_report(analysis_result))
         
         # Update task status
         self.update_state(
@@ -140,7 +140,7 @@ def generate_executive_summary_task(self, investigation_id: str) -> Dict[str, An
         }
         
         # Save executive summary
-        await investigation_repo.save_executive_summary(investigation_id, executive_summary)
+        asyncio.run(investigation_repo.save_executive_summary(investigation_id, executive_summary))
         
         # Update task status
         self.update_state(
@@ -176,7 +176,7 @@ def export_investigation_data_task(self, investigation_id: str, export_format: s
         
         # Get investigation
         investigation_repo = InvestigationRepository()
-        investigation = await investigation_repo.get_investigation(investigation_id)
+        investigation = asyncio.run(investigation_repo.get_investigation(investigation_id))
         
         if not investigation:
             raise ValueError(f"Investigation {investigation_id} not found")
@@ -188,7 +188,7 @@ def export_investigation_data_task(self, investigation_id: str, export_format: s
         )
         
         # Prepare export data
-        export_data = await prepare_export_data(investigation, investigation_repo)
+        export_data = asyncio.run(prepare_export_data(investigation, investigation_repo))
         
         # Update task status
         self.update_state(
@@ -213,7 +213,7 @@ def export_investigation_data_task(self, investigation_id: str, export_format: s
         )
         
         # Save export file
-        export_path = await investigation_repo.save_export_file(investigation_id, export_file, export_format)
+        export_path = asyncio.run(investigation_repo.save_export_file(investigation_id, export_file, export_format))
         
         # Update task status
         self.update_state(
@@ -251,13 +251,13 @@ def generate_threat_report_task(self, investigation_id: str) -> Dict[str, Any]:
         
         # Get investigation
         investigation_repo = InvestigationRepository()
-        investigation = await investigation_repo.get_investigation(investigation_id)
+        investigation = asyncio.run(investigation_repo.get_investigation(investigation_id))
         
         if not investigation:
             raise ValueError(f"Investigation {investigation_id} not found")
         
         # Get threat assessments
-        threat_assessments = await investigation_repo.get_threat_assessments(investigation_id)
+        threat_assessments = asyncio.run(investigation_repo.get_threat_assessments(investigation_id))
         
         # Update task status
         self.update_state(
@@ -299,7 +299,7 @@ def generate_threat_report_task(self, investigation_id: str) -> Dict[str, Any]:
         )
         
         # Save threat report
-        await investigation_repo.save_threat_report(investigation_id, threat_report)
+        asyncio.run(investigation_repo.save_threat_report(investigation_id, threat_report))
         
         # Update task status
         self.update_state(
@@ -335,14 +335,14 @@ def generate_network_analysis_report_task(self, investigation_id: str) -> Dict[s
         
         # Get investigation
         investigation_repo = InvestigationRepository()
-        investigation = await investigation_repo.get_investigation(investigation_id)
+        investigation = asyncio.run(investigation_repo.get_investigation(investigation_id))
         
         if not investigation:
             raise ValueError(f"Investigation {investigation_id} not found")
         
         # Get relationships and patterns
-        relationships = await investigation_repo.get_relationships(investigation_id)
-        patterns = await investigation_repo.get_patterns(investigation_id)
+        relationships = asyncio.run(investigation_repo.get_relationships(investigation_id))
+        patterns = asyncio.run(investigation_repo.get_patterns(investigation_id))
         
         # Update task status
         self.update_state(
@@ -384,7 +384,7 @@ def generate_network_analysis_report_task(self, investigation_id: str) -> Dict[s
         )
         
         # Save network report
-        await investigation_repo.save_network_report(investigation_id, network_report)
+        asyncio.run(investigation_repo.save_network_report(investigation_id, network_report))
         
         # Update task status
         self.update_state(
@@ -411,11 +411,11 @@ async def prepare_export_data(investigation: Investigation, investigation_repo: 
     """Prepare data for export"""
     try:
         # Get all related data
-        github_data = await investigation_repo.get_github_data(investigation.id)
-        social_media_data = await investigation_repo.get_social_media_data(investigation.id)
-        domain_data = await investigation_repo.get_domain_data(investigation.id)
-        analysis_results = await investigation_repo.get_analysis_results(investigation.id)
-        intelligence_report = await investigation_repo.get_intelligence_report(investigation.id)
+        github_data = asyncio.run(investigation_repo.get_github_data(investigation.id))
+        social_media_data = asyncio.run(investigation_repo.get_social_media_data(investigation.id))
+        domain_data = asyncio.run(investigation_repo.get_domain_data(investigation.id))
+        analysis_results = asyncio.run(investigation_repo.get_analysis_results(investigation.id))
+        intelligence_report = asyncio.run(investigation_repo.get_intelligence_report(investigation.id))
         
         return {
             "investigation": investigation.dict(),

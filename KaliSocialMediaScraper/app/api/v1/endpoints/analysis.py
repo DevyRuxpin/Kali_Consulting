@@ -17,7 +17,6 @@ from app.models.schemas import (
     DomainAnalysisRequest
 )
 from app.services.threat_analyzer import ThreatAnalyzer
-from app.services.network_analyzer import NetworkAnalyzer
 from app.services.domain_analyzer import DomainAnalyzer
 
 logger = logging.getLogger(__name__)
@@ -41,36 +40,33 @@ async def analyze_threat(
         logger.error(f"Error analyzing threat for {target}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/network/{entity_id}", response_model=NetworkGraph)
-async def get_network_graph(
-    entity_id: str,
-    depth: int = Query(2, ge=1, le=5, description="Network analysis depth"),
-    db: Session = Depends(get_db)
-):
-    """Get network graph for an entity"""
-    try:
-        analyzer = NetworkAnalyzer()
-        graph = await analyzer.generate_network_graph(entity_id)
-        return graph
-    except Exception as e:
-        logger.error(f"Error generating network graph for {entity_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+# Temporarily disabled due to import issues
+# @router.get("/network/{entity_id}", response_model=NetworkGraph)
+# async def get_network_graph(
+#     entity_id: str,
+#     depth: int = Query(2, ge=1, le=5, description="Network analysis depth"),
+#     db: Session = Depends(get_db)
+# ):
+#     """Get network graph for an entity"""
+#     try:
+#         raise HTTPException(status_code=503, detail="Network analysis temporarily disabled")
+#     except Exception as e:
+#         logger.error(f"Error generating network graph for {entity_id}: {e}")
+#         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/timeline/{entity_id}", response_model=TimelineData)
-async def get_timeline_data(
-    entity_id: str,
-    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
-    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
-    db: Session = Depends(get_db)
-):
-    """Get timeline data for an entity"""
-    try:
-        analyzer = NetworkAnalyzer()
-        timeline = await analyzer.generate_timeline(entity_id)
-        return timeline
-    except Exception as e:
-        logger.error(f"Error retrieving timeline data for {entity_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+# @router.get("/timeline/{entity_id}", response_model=TimelineData)
+# async def get_timeline_data(
+#     entity_id: str,
+#     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+#     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+#     db: Session = Depends(get_db)
+# ):
+#     """Get timeline data for an entity"""
+#     try:
+#         raise HTTPException(status_code=503, detail="Timeline analysis temporarily disabled")
+#     except Exception as e:
+#         logger.error(f"Error retrieving timeline data for {entity_id}: {e}")
+#         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/domain", response_model=Dict[str, Any])
 async def analyze_domain(

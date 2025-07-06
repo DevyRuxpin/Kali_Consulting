@@ -23,6 +23,10 @@ from app.models.schemas import (
     Pattern,
     Anomaly
 )
+from app.services.entity_resolver import EntityResolver
+from app.services.pattern_analyzer import PatternAnalyzer
+from app.services.anomaly_detector import AnomalyDetector
+from app.services.threat_correlator import ThreatCorrelator
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +89,7 @@ class IntelligenceEngine:
             
             # Create analysis result
             result = AnalysisResult(
-                investigation_id=investigation.id,
+                investigation_id=str(investigation.id),
                 analysis_type=analysis_depth,
                 entities=entities,
                 relationships=relationships,

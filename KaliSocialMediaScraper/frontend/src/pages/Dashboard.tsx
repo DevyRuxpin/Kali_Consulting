@@ -6,51 +6,28 @@ import {
   ExclamationTriangleIcon,
   CheckCircleIcon,
   ClockIcon,
-  XCircleIcon
+  XCircleIcon,
+  ArrowPathIcon,
+  ExclamationCircleIcon
 } from '@heroicons/react/24/outline';
+import RealTimeDashboard from '../components/RealTimeDashboard';
+import { useDashboardData } from '../hooks/useDashboardData';
 
 const Dashboard: React.FC = () => {
-  // Mock data - in real app this would come from API
-  const stats = {
-    totalInvestigations: 156,
-    activeInvestigations: 23,
-    completedInvestigations: 128,
-    failedInvestigations: 5,
-    totalFindings: 1247,
-    highThreatFindings: 89,
-    recentReports: 12,
-    systemHealth: 'Good'
-  };
-
-  const recentInvestigations = [
-    {
-      id: 1,
-      title: 'GitHub Repository Analysis',
-      target: 'github.com/suspicious/repo',
-      status: 'completed',
-      progress: 100,
-      createdAt: '2024-01-15T10:30:00Z',
-      threatScore: 0.8
-    },
-    {
-      id: 2,
-      title: 'Social Media Profile Investigation',
-      target: '@suspicious_user',
-      status: 'active',
-      progress: 65,
-      createdAt: '2024-01-15T09:15:00Z',
-      threatScore: 0.6
-    },
-    {
-      id: 3,
-      title: 'Domain Analysis',
-      target: 'suspicious-domain.com',
-      status: 'pending',
-      progress: 0,
-      createdAt: '2024-01-15T08:45:00Z',
-      threatScore: 0.3
-    }
-  ];
+  const {
+    stats,
+    recentInvestigations,
+    recentActivity,
+    isLoading,
+    error,
+    lastUpdate,
+    refresh
+  } = useDashboardData({
+    autoRefresh: true,
+    refreshInterval: 30000,
+    enableRetry: true,
+    maxRetries: 3
+  });
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -91,11 +68,42 @@ const Dashboard: React.FC = () => {
             Overview of your OSINT investigations and findings
           </p>
         </div>
-        <button className="btn-primary">
-          <MagnifyingGlassIcon className="h-5 w-5 mr-2" />
-          New Investigation
-        </button>
+        <div className="flex items-center space-x-4">
+          {/* Error Display */}
+          {error && (
+            <div className="flex items-center space-x-2 text-red-600">
+              <ExclamationCircleIcon className="h-4 w-4" />
+              <span className="text-sm">{error}</span>
+            </div>
+          )}
+          
+          {/* Loading Indicator */}
+          {isLoading && (
+            <div className="flex items-center space-x-2 text-blue-600">
+              <ArrowPathIcon className="h-4 w-4 animate-spin" />
+              <span className="text-sm">Loading...</span>
+            </div>
+          )}
+          
+          {/* Refresh Button */}
+          <button
+            onClick={refresh}
+            disabled={isLoading}
+            className="flex items-center space-x-2 px-3 py-2 text-sm bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors disabled:opacity-50"
+          >
+            <ArrowPathIcon className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            <span>Refresh</span>
+          </button>
+          
+          <button className="btn-primary">
+            <MagnifyingGlassIcon className="h-5 w-5 mr-2" />
+            New Investigation
+          </button>
+        </div>
       </div>
+
+      {/* Real-Time Intelligence Dashboard */}
+      <RealTimeDashboard />
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -110,7 +118,7 @@ const Dashboard: React.FC = () => {
                   Total Investigations
                 </p>
                 <p className="text-2xl font-semibold text-gray-900 dark:text-white">
-                  {stats.totalInvestigations}
+                  {stats?.totalInvestigations || 0}
                 </p>
               </div>
             </div>
@@ -128,7 +136,7 @@ const Dashboard: React.FC = () => {
                   Active Investigations
                 </p>
                 <p className="text-2xl font-semibold text-gray-900 dark:text-white">
-                  {stats.activeInvestigations}
+                  {stats?.activeInvestigations || 0}
                 </p>
               </div>
             </div>
@@ -146,7 +154,7 @@ const Dashboard: React.FC = () => {
                   High Threat Findings
                 </p>
                 <p className="text-2xl font-semibold text-gray-900 dark:text-white">
-                  {stats.highThreatFindings}
+                  {stats?.highThreatFindings || 0}
                 </p>
               </div>
             </div>
@@ -164,7 +172,7 @@ const Dashboard: React.FC = () => {
                   Recent Reports
                 </p>
                 <p className="text-2xl font-semibold text-gray-900 dark:text-white">
-                  {stats.recentReports}
+                  {stats?.recentReports || 0}
                 </p>
               </div>
             </div>
@@ -193,55 +201,63 @@ const Dashboard: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="table-body">
-                {recentInvestigations.map((investigation) => (
-                  <tr key={investigation.id}>
-                    <td className="table-cell">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10">
-                          {getStatusIcon(investigation.status)}
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900 dark:text-white">
-                            {investigation.title}
+                {recentInvestigations.length > 0 ? (
+                  recentInvestigations.map((investigation) => (
+                    <tr key={investigation.id}>
+                      <td className="table-cell">
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0 h-10 w-10">
+                            {getStatusIcon(investigation.status)}
+                          </div>
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-gray-900 dark:text-white">
+                              {investigation.title}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="table-cell">
-                      <div className="text-sm text-gray-900 dark:text-white">
-                        {investigation.target}
-                      </div>
-                    </td>
-                    <td className="table-cell">
-                      <span className={`status-${investigation.status}`}>
-                        {investigation.status.charAt(0).toUpperCase() + investigation.status.slice(1)}
-                      </span>
-                    </td>
-                    <td className="table-cell">
-                      <div className="flex items-center">
-                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                          <div
-                            className="bg-primary-600 h-2 rounded-full"
-                            style={{ width: `${investigation.progress}%` }}
-                          />
+                      </td>
+                      <td className="table-cell">
+                        <div className="text-sm text-gray-900 dark:text-white">
+                          {investigation.target}
                         </div>
-                        <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
-                          {investigation.progress}%
+                      </td>
+                      <td className="table-cell">
+                        <span className={`status-${investigation.status}`}>
+                          {investigation.status.charAt(0).toUpperCase() + investigation.status.slice(1)}
                         </span>
-                      </div>
-                    </td>
-                    <td className="table-cell">
-                      <span className={getThreatScoreClass(investigation.threatScore)}>
-                        {getThreatScoreText(investigation.threatScore)}
-                      </span>
-                    </td>
-                    <td className="table-cell">
-                      <div className="text-sm text-gray-500 dark:text-gray-400">
-                        {new Date(investigation.createdAt).toLocaleDateString()}
-                      </div>
+                      </td>
+                      <td className="table-cell">
+                        <div className="flex items-center">
+                          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                            <div
+                              className="bg-primary-600 h-2 rounded-full"
+                              style={{ width: `${investigation.progress}%` }}
+                            />
+                          </div>
+                          <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
+                            {investigation.progress}%
+                          </span>
+                        </div>
+                      </td>
+                      <td className="table-cell">
+                        <span className={getThreatScoreClass(investigation.threatScore)}>
+                          {getThreatScoreText(investigation.threatScore)}
+                        </span>
+                      </td>
+                      <td className="table-cell">
+                        <div className="text-sm text-gray-500 dark:text-gray-400">
+                          {new Date(investigation.createdAt).toLocaleDateString()}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={6} className="table-cell text-center text-gray-500 dark:text-gray-400 py-8">
+                      {isLoading ? 'Loading investigations...' : 'No recent investigations found'}
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
@@ -300,7 +316,7 @@ const Dashboard: React.FC = () => {
                 <span className="text-sm text-gray-500 dark:text-gray-400">
                   Overall Health
                 </span>
-                <span className="status-active">{stats.systemHealth}</span>
+                <span className="status-active">{stats?.systemHealth || 'Unknown'}</span>
               </div>
             </div>
           </div>
@@ -312,45 +328,32 @@ const Dashboard: React.FC = () => {
               Recent Activity
             </h3>
             <div className="space-y-3">
-              <div className="flex items-center space-x-3">
-                <div className="flex-shrink-0">
-                  <div className="h-2 w-2 bg-success-400 rounded-full"></div>
+              {recentActivity.length > 0 ? (
+                recentActivity.slice(0, 5).map((activity) => (
+                  <div key={activity.id} className="flex items-center space-x-3">
+                    <div className="flex-shrink-0">
+                      <div className={`h-2 w-2 rounded-full ${
+                        activity.severity === 'critical' ? 'bg-red-400' :
+                        activity.severity === 'high' ? 'bg-orange-400' :
+                        activity.severity === 'medium' ? 'bg-yellow-400' :
+                        'bg-green-400'
+                      }`}></div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-900 dark:text-white">
+                        {activity.description}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {new Date(activity.timestamp).toLocaleTimeString()}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center text-gray-500 dark:text-gray-400 py-4">
+                  {isLoading ? 'Loading activity...' : 'No recent activity'}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-900 dark:text-white">
-                    Investigation completed
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    2 minutes ago
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-3">
-                <div className="flex-shrink-0">
-                  <div className="h-2 w-2 bg-warning-400 rounded-full"></div>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-900 dark:text-white">
-                    New finding detected
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    5 minutes ago
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-3">
-                <div className="flex-shrink-0">
-                  <div className="h-2 w-2 bg-primary-400 rounded-full"></div>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-900 dark:text-white">
-                    Report generated
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    10 minutes ago
-                  </p>
-                </div>
-              </div>
+              )}
             </div>
           </div>
         </div>

@@ -2,11 +2,9 @@
 Pattern Analysis Service
 """
 
-import asyncio
 import logging
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
-import re
 from collections import defaultdict, Counter
 import statistics
 from dataclasses import dataclass
@@ -177,7 +175,6 @@ class PatternAnalyzer:
             patterns = []
             
             # Get post entities for users
-            post_entities = []
             for user in user_entities:
                 # This would require access to user's posts
                 # For now, simulate pattern detection
@@ -193,13 +190,10 @@ class PatternAnalyzer:
                     if posts_count > 100 and followers_count < 1000:
                         pattern = Pattern(
                             id=f"pattern_posting_frequency_{user.id}",
-                            pattern_type="behavioral",
-                            category="posting_frequency",
-                            title="High Posting Frequency",
+                            type="behavioral",
                             description=f"User {user.username} shows unusually high posting frequency",
+                            entities=[user.id],
                             confidence=0.7,
-                            severity="medium",
-                            entities_involved=[user.id],
                             metadata={
                                 "posts_count": posts_count,
                                 "followers_count": followers_count,
@@ -214,13 +208,10 @@ class PatternAnalyzer:
                         if avg_engagement < 10:
                             pattern = Pattern(
                                 id=f"pattern_low_engagement_{user.id}",
-                                pattern_type="behavioral",
-                                category="engagement",
-                                title="Low Engagement Rate",
+                                type="behavioral",
                                 description=f"User {user.username} has low engagement despite high follower count",
+                                entities=[user.id],
                                 confidence=0.6,
-                                severity="medium",
-                                entities_involved=[user.id],
                                 metadata={
                                     "posts_count": posts_count,
                                     "followers_count": followers_count,
@@ -249,13 +240,10 @@ class PatternAnalyzer:
                     if followers_count > 1000 and following_count < 10:
                         pattern = Pattern(
                             id=f"pattern_suspicious_ratio_{user.id}",
-                            pattern_type="behavioral",
-                            category="follower_ratio",
-                            title="Suspicious Follower Ratio",
+                            type="behavioral",
                             description=f"User {user.username} has suspicious follower/following ratio",
+                            entities=[user.id],
                             confidence=0.8,
-                            severity="high",
-                            entities_involved=[user.id],
                             metadata={
                                 "followers_count": followers_count,
                                 "following_count": following_count,
@@ -268,13 +256,10 @@ class PatternAnalyzer:
                     if followers_count > 5000 and following_count > 4000:
                         pattern = Pattern(
                             id=f"pattern_bot_behavior_{user.id}",
-                            pattern_type="behavioral",
-                            category="bot_indicators",
-                            title="Bot-like Behavior",
+                            type="behavioral",
                             description=f"User {user.username} shows bot-like following behavior",
+                            entities=[user.id],
                             confidence=0.6,
-                            severity="medium",
-                            entities_involved=[user.id],
                             metadata={
                                 "followers_count": followers_count,
                                 "following_count": following_count
@@ -315,13 +300,10 @@ class PatternAnalyzer:
                 if user_range:
                     pattern = Pattern(
                         id=f"pattern_follower_range_{user.id}",
-                        pattern_type="behavioral",
-                        category="follower_range",
-                        title=f"{user_range.title()} Influencer",
+                        type="behavioral",
                         description=f"User {user.username} falls into {user_range} influencer category",
+                        entities=[user.id],
                         confidence=0.9,
-                        severity="low",
-                        entities_involved=[user.id],
                         metadata={
                             "follower_range": user_range,
                             "followers_count": followers_count
@@ -351,13 +333,10 @@ class PatternAnalyzer:
             for user_id, platforms in cross_platform_users.items():
                 pattern = Pattern(
                     id=f"pattern_cross_platform_{user_id}",
-                    pattern_type="behavioral",
-                    category="cross_platform_presence",
-                    title="Cross-Platform Presence",
+                    type="behavioral",
                     description=f"User present on {len(platforms)} platforms: {', '.join(platforms)}",
+                    entities=[user_id],
                     confidence=0.8,
-                    severity="medium",
-                    entities_involved=[user_id],
                     metadata={
                         "platforms": platforms,
                         "platform_count": len(platforms)
@@ -379,20 +358,17 @@ class PatternAnalyzer:
             # Group relationships by type
             relationship_groups = defaultdict(list)
             for rel in relationships:
-                relationship_groups[rel.relationship_type].append(rel)
+                relationship_groups[rel.type].append(rel)
             
             # Analyze cluster sizes
             for rel_type, rels in relationship_groups.items():
                 if len(rels) > 5:  # Significant cluster
                     pattern = Pattern(
                         id=f"pattern_relationship_cluster_{rel_type}",
-                        pattern_type="network",
-                        category="relationship_cluster",
-                        title=f"Large {rel_type.title()} Cluster",
+                        type="network",
                         description=f"Found {len(rels)} {rel_type} relationships",
+                        entities=[rel.source_id for rel in rels] + [rel.target_id for rel in rels],
                         confidence=0.7,
-                        severity="medium",
-                        entities_involved=list(set([rel.source_id for rel in rels] + [rel.target_id for rel in rels])),
                         metadata={
                             "relationship_type": rel_type,
                             "cluster_size": len(rels),
@@ -413,7 +389,7 @@ class PatternAnalyzer:
             patterns = []
             
             # Calculate entity centrality
-            entity_centrality = defaultdict(int)
+            entity_centrality: Dict[str, int] = defaultdict(int)
             for rel in relationships:
                 entity_centrality[rel.source_id] += 1
                 entity_centrality[rel.target_id] += 1
@@ -425,13 +401,10 @@ class PatternAnalyzer:
                 if centrality > high_influence_threshold:
                     pattern = Pattern(
                         id=f"pattern_high_influence_{entity_id}",
-                        pattern_type="network",
-                        category="influence",
-                        title="High Network Influence",
+                        type="network",
                         description=f"Entity {entity_id} shows high network centrality",
+                        entities=[entity_id],
                         confidence=0.8,
-                        severity="medium",
-                        entities_involved=[entity_id],
                         metadata={
                             "centrality_score": centrality,
                             "threshold": high_influence_threshold
@@ -451,7 +424,7 @@ class PatternAnalyzer:
             patterns = []
             
             # Analyze mention patterns
-            mention_relationships = [r for r in relationships if r.relationship_type == "mentions"]
+            mention_relationships = [r for r in relationships if r.type == "mentions"]
             
             if mention_relationships:
                 # Find frequent mentioners
@@ -461,13 +434,10 @@ class PatternAnalyzer:
                 for entity_id in frequent_mentioners:
                     pattern = Pattern(
                         id=f"pattern_frequent_mentions_{entity_id}",
-                        pattern_type="network",
-                        category="communication",
-                        title="Frequent Mentioner",
+                        type="network",
                         description=f"Entity {entity_id} frequently mentions others",
+                        entities=[entity_id],
                         confidence=0.7,
-                        severity="low",
-                        entities_involved=[entity_id],
                         metadata={
                             "mention_count": mention_counts[entity_id]
                         }
@@ -491,13 +461,10 @@ class PatternAnalyzer:
             if cross_platform_rels:
                 pattern = Pattern(
                     id="pattern_cross_platform_network",
-                    pattern_type="network",
-                    category="cross_platform",
-                    title="Cross-Platform Network",
+                    type="network",
                     description=f"Found {len(cross_platform_rels)} cross-platform relationships",
+                    entities=list(set([r.source_id for r in cross_platform_rels] + [r.target_id for r in cross_platform_rels])),
                     confidence=0.9,
-                    severity="medium",
-                    entities_involved=list(set([r.source_id for r in cross_platform_rels] + [r.target_id for r in cross_platform_rels])),
                     metadata={
                         "cross_platform_relationships": len(cross_platform_rels)
                     }
@@ -534,13 +501,10 @@ class PatternAnalyzer:
                     if avg_diff < 3600:  # Less than 1 hour between creations
                         pattern = Pattern(
                             id="pattern_rapid_creation",
-                            pattern_type="temporal",
-                            category="creation_timing",
-                            title="Rapid Account Creation",
+                            type="temporal",
                             description="Multiple accounts created in rapid succession",
+                            entities=[e.id for e in entities if e.created_at],
                             confidence=0.8,
-                            severity="high",
-                            entities_involved=[e.id for e in entities if e.created_at],
                             metadata={
                                 "average_time_between_creations": avg_diff,
                                 "total_entities": len(creation_times)
@@ -570,13 +534,10 @@ class PatternAnalyzer:
             if len(recent_creations) > 3:
                 pattern = Pattern(
                     id="pattern_recent_creations",
-                    pattern_type="temporal",
-                    category="creation_recency",
-                    title="Recent Account Creations",
+                    type="temporal",
                     description=f"Found {len(recent_creations)} recently created accounts",
+                    entities=[e.id for e in recent_creations],
                     confidence=0.7,
-                    severity="medium",
-                    entities_involved=[e.id for e in recent_creations],
                     metadata={
                         "recent_accounts": len(recent_creations),
                         "timeframe_days": 30
@@ -606,13 +567,10 @@ class PatternAnalyzer:
                         if growth_rate > 100:  # More than 100 followers per day
                             pattern = Pattern(
                                 id=f"pattern_suspicious_growth_{entity.id}",
-                                pattern_type="temporal",
-                                category="growth_rate",
-                                title="Suspicious Growth Rate",
+                                type="temporal",
                                 description=f"Entity {entity.username} shows suspicious follower growth",
+                                entities=[entity.id],
                                 confidence=0.8,
-                                severity="high",
-                                entities_involved=[entity.id],
                                 metadata={
                                     "growth_rate": growth_rate,
                                     "followers_count": entity.followers_count,
@@ -633,7 +591,7 @@ class PatternAnalyzer:
             patterns = []
             
             # Group entities by creation month
-            monthly_creations = defaultdict(int)
+            monthly_creations: Dict[int, int] = defaultdict(int)
             for entity in entities:
                 if entity.created_at:
                     month = entity.created_at.month
@@ -646,13 +604,10 @@ class PatternAnalyzer:
                     if count > avg_creations * 2:  # Twice the average
                         pattern = Pattern(
                             id=f"pattern_seasonal_spike_{month}",
-                            pattern_type="temporal",
-                            category="seasonal",
-                            title=f"Seasonal Creation Spike",
+                            type="temporal",
                             description=f"Unusual account creation spike in month {month}",
+                            entities=[],
                             confidence=0.6,
-                            severity="low",
-                            entities_involved=[],
                             metadata={
                                 "month": month,
                                 "creation_count": count,
@@ -686,13 +641,10 @@ class PatternAnalyzer:
                 for hashtag in trending_hashtags:
                     pattern = Pattern(
                         id=f"pattern_trending_hashtag_{hashtag}",
-                        pattern_type="content",
-                        category="hashtag_trending",
-                        title=f"Trending Hashtag: #{hashtag}",
+                        type="content",
                         description=f"Hashtag #{hashtag} appears {hashtag_counts[hashtag]} times",
+                        entities=[],
                         confidence=0.8,
-                        severity="low",
-                        entities_involved=[],
                         metadata={
                             "hashtag": hashtag,
                             "usage_count": hashtag_counts[hashtag]
@@ -725,13 +677,10 @@ class PatternAnalyzer:
                 for mention in frequent_mentions:
                     pattern = Pattern(
                         id=f"pattern_frequent_mention_{mention}",
-                        pattern_type="content",
-                        category="mention_frequency",
-                        title=f"Frequent Mention: @{mention}",
+                        type="content",
                         description=f"User @{mention} is frequently mentioned",
+                        entities=[],
                         confidence=0.7,
-                        severity="low",
-                        entities_involved=[],
                         metadata={
                             "mentioned_user": mention,
                             "mention_count": mention_counts[mention]
@@ -775,13 +724,10 @@ class PatternAnalyzer:
                     for domain in frequent_domains:
                         pattern = Pattern(
                             id=f"pattern_frequent_domain_{domain}",
-                            pattern_type="content",
-                            category="url_domain",
-                            title=f"Frequent Domain: {domain}",
+                            type="content",
                             description=f"Domain {domain} appears frequently in URLs",
+                            entities=[],
                             confidence=0.8,
-                            severity="medium",
-                            entities_involved=[],
                             metadata={
                                 "domain": domain,
                                 "url_count": domain_counts[domain]
@@ -817,13 +763,10 @@ class PatternAnalyzer:
                         if content_length > avg_length * 2:
                             pattern = Pattern(
                                 id=f"pattern_long_content_{entity.id}",
-                                pattern_type="content",
-                                category="content_length",
-                                title="Unusually Long Content",
+                                type="content",
                                 description=f"Entity {entity.username} posts unusually long content",
+                                entities=[entity.id],
                                 confidence=0.6,
-                                severity="low",
-                                entities_involved=[entity.id],
                                 metadata={
                                     "content_length": content_length,
                                     "average_length": avg_length
@@ -856,13 +799,10 @@ class PatternAnalyzer:
                     if positive_count > negative_count * 2:
                         pattern = Pattern(
                             id=f"pattern_positive_sentiment_{entity.id}",
-                            pattern_type="content",
-                            category="sentiment",
-                            title="Positive Sentiment",
+                            type="content",
                             description=f"Entity {entity.username} shows predominantly positive sentiment",
+                            entities=[entity.id],
                             confidence=0.6,
-                            severity="low",
-                            entities_involved=[entity.id],
                             metadata={
                                 "positive_keywords": positive_count,
                                 "negative_keywords": negative_count
@@ -873,13 +813,10 @@ class PatternAnalyzer:
                     elif negative_count > positive_count * 2:
                         pattern = Pattern(
                             id=f"pattern_negative_sentiment_{entity.id}",
-                            pattern_type="content",
-                            category="sentiment",
-                            title="Negative Sentiment",
+                            type="content",
                             description=f"Entity {entity.username} shows predominantly negative sentiment",
+                            entities=[entity.id],
                             confidence=0.6,
-                            severity="medium",
-                            entities_involved=[entity.id],
                             metadata={
                                 "positive_keywords": positive_count,
                                 "negative_keywords": negative_count
@@ -896,7 +833,7 @@ class PatternAnalyzer:
     async def _analyze_location_clusters(self, entities: List[Entity]) -> List[Pattern]:
         """Analyze geographic location patterns"""
         try:
-            patterns = []
+            patterns: List[Pattern] = []
             
             # Group entities by location
             location_groups = defaultdict(list)
@@ -909,13 +846,10 @@ class PatternAnalyzer:
                 if len(entities_list) > 2:
                     pattern = Pattern(
                         id=f"pattern_location_cluster_{location}",
-                        pattern_type="geographic",
-                        category="location_cluster",
-                        title=f"Location Cluster: {location}",
+                        type="geographic",
                         description=f"Found {len(entities_list)} entities in {location}",
+                        entities=[e.id for e in entities_list],
                         confidence=0.8,
-                        severity="low",
-                        entities_involved=[e.id for e in entities_list],
                         metadata={
                             "location": location,
                             "entity_count": len(entities_list)
@@ -932,12 +866,10 @@ class PatternAnalyzer:
     async def _analyze_geographic_movement(self, entities: List[Entity]) -> List[Pattern]:
         """Analyze geographic movement patterns"""
         try:
-            patterns = []
-            
+            patterns: List[Pattern] = []
             # This would require historical location data
             # For now, return empty list
             return patterns
-            
         except Exception as e:
             logger.error(f"Error analyzing geographic movement: {e}")
             return []
@@ -945,8 +877,7 @@ class PatternAnalyzer:
     async def _analyze_regional_behavior(self, entities: List[Entity]) -> List[Pattern]:
         """Analyze regional behavior patterns"""
         try:
-            patterns = []
-            
+            patterns: List[Pattern] = []
             # Group by region/country
             regional_groups = defaultdict(list)
             for entity in entities:
@@ -956,28 +887,22 @@ class PatternAnalyzer:
                     if len(location_parts) > 1:
                         region = location_parts[-1].strip()
                         regional_groups[region].append(entity)
-            
             # Analyze regional patterns
             for region, entities_list in regional_groups.items():
                 if len(entities_list) > 3:
                     pattern = Pattern(
                         id=f"pattern_regional_behavior_{region}",
-                        pattern_type="geographic",
-                        category="regional_behavior",
-                        title=f"Regional Behavior: {region}",
+                        type="geographic",
                         description=f"Found {len(entities_list)} entities from {region}",
+                        entities=[e.id for e in entities_list],
                         confidence=0.7,
-                        severity="low",
-                        entities_involved=[e.id for e in entities_list],
                         metadata={
                             "region": region,
                             "entity_count": len(entities_list)
                         }
                     )
                     patterns.append(pattern)
-            
             return patterns
-            
         except Exception as e:
             logger.error(f"Error analyzing regional behavior: {e}")
             return []
