@@ -108,11 +108,13 @@ export const useRealTimeData = (options: UseRealTimeDataOptions = {}): UseRealTi
         console.log('WebSocket connected');
       };
       
-      ws.onclose = () => {
+      ws.onclose = (event) => {
         setIsConnected(false);
-        console.log('WebSocket disconnected');
+        console.log('WebSocket disconnected', event.code, event.reason);
         
-        if (autoReconnect) {
+        // Only reconnect for abnormal closures (not code 1000)
+        if (autoReconnect && event.code !== 1000) {
+          console.log('Abnormal closure detected, attempting to reconnect...');
           reconnectTimeoutRef.current = setTimeout(() => {
             console.log('Attempting to reconnect...');
             initializeWebSocket();
@@ -121,13 +123,19 @@ export const useRealTimeData = (options: UseRealTimeDataOptions = {}): UseRealTi
       };
       
       ws.onerror = (event) => {
-        setError('WebSocket connection error');
         console.error('WebSocket error:', event);
+        // Don't set error state immediately, let onclose handle reconnection
       };
       
       ws.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
+          
+          if (message.type === 'status') {
+            // Handle status messages
+            console.log('WebSocket status:', message.message);
+            return;
+          }
           
           switch (message.type) {
             case 'real_time_data':
@@ -150,6 +158,11 @@ export const useRealTimeData = (options: UseRealTimeDataOptions = {}): UseRealTi
                 const updated = prev.filter(e => e.id !== message.data.id);
                 return [message.data, ...updated.slice(0, 9)];
               });
+              break;
+              
+            case 'echo':
+              // Handle echo messages (for testing)
+              console.log('Echo received:', message.message);
               break;
               
             default:

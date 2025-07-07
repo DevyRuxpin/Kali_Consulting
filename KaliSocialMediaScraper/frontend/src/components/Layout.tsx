@@ -17,6 +17,10 @@ const Layout: React.FC = () => {
   const [darkMode, setDarkMode] = useState(false);
   const location = useLocation();
 
+  // Debug logging
+  console.log('Current location:', location.pathname);
+  console.log('Navigation state:', { sidebarOpen, darkMode });
+
   const navigation = [
     { name: 'Dashboard', href: '/', icon: HomeIcon },
     { name: 'Investigations', href: '/investigations', icon: MagnifyingGlassIcon },
@@ -55,6 +59,16 @@ const Layout: React.FC = () => {
                 Kali OSINT
               </span>
             </div>
+            {/* Test navigation button */}
+            <button
+              onClick={() => {
+                console.log('Test navigation button clicked');
+                window.location.href = '/investigations';
+              }}
+              className="ml-4 px-2 py-1 text-xs bg-red-500 text-white rounded"
+            >
+              Test Nav
+            </button>
           </div>
           <nav className="mt-6 flex-1 space-y-1 px-2">
             {navigation.map((item) => {
@@ -63,12 +77,15 @@ const Layout: React.FC = () => {
                 <Link
                   key={item.name}
                   to={item.href}
-                  className={`group flex items-center px-2 py-2 text-base font-medium rounded-md transition-colors duration-200 ${
+                  className={`group flex items-center px-2 py-2 text-base font-medium rounded-md transition-colors duration-200 cursor-pointer border border-transparent hover:border-gray-300 ${
                     isActive
-                      ? 'sidebar-link-active'
-                      : 'sidebar-link-inactive'
+                      ? 'bg-primary-100 text-primary-900 dark:bg-primary-900 dark:text-primary-100 border-primary-300'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-700'
                   }`}
-                  onClick={() => setSidebarOpen(false)}
+                  onClick={() => {
+                    console.log(`Navigating to: ${item.href}`);
+                    setSidebarOpen(false);
+                  }}
                 >
                   <item.icon className="mr-4 h-6 w-6" />
                   {item.name}
@@ -91,6 +108,16 @@ const Layout: React.FC = () => {
                 Kali OSINT
               </span>
             </div>
+            {/* Test navigation button */}
+            <button
+              onClick={() => {
+                console.log('Test navigation button clicked');
+                window.location.href = '/investigations';
+              }}
+              className="ml-4 px-2 py-1 text-xs bg-red-500 text-white rounded"
+            >
+              Test Nav
+            </button>
           </div>
           <nav className="mt-6 flex-1 space-y-1 px-2">
             {navigation.map((item) => {
@@ -99,11 +126,14 @@ const Layout: React.FC = () => {
                 <Link
                   key={item.name}
                   to={item.href}
-                  className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors duration-200 ${
+                  className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors duration-200 cursor-pointer border border-transparent hover:border-gray-300 ${
                     isActive
-                      ? 'sidebar-link-active'
-                      : 'sidebar-link-inactive'
+                      ? 'bg-primary-100 text-primary-900 dark:bg-primary-900 dark:text-primary-100 border-primary-300'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-700'
                   }`}
+                  onClick={() => {
+                    console.log(`Desktop navigation to: ${item.href}`);
+                  }}
                 >
                   <item.icon className="mr-3 h-5 w-5" />
                   {item.name}

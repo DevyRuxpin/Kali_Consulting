@@ -18,6 +18,10 @@ api.interceptors.request.use(
     // Add auth token if available
     const token = localStorage.getItem('auth_token');
     if (token) {
+      // Ensure headers object exists
+      if (!config.headers) {
+        config.headers = {};
+      }
       config.headers.Authorization = `Bearer ${token}`;
     }
     
@@ -105,7 +109,7 @@ export class InvestigationService {
 
   static async getInvestigation(id: string): Promise<any> {
     try {
-      const response = await api.get(`/api/v1/investigations/${id}`);
+      const response = await api.get(`/api/v1/investigations/${id}/`);
       return response.data;
     } catch (error) {
       console.error('Failed to fetch investigation:', error);
@@ -113,9 +117,29 @@ export class InvestigationService {
     }
   }
 
+  static async getInvestigationStatus(id: string): Promise<any> {
+    try {
+      const response = await api.get(`/api/v1/investigations/${id}/status/`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch investigation status:', error);
+      throw error;
+    }
+  }
+
+  static async getInvestigationFindings(id: string): Promise<any> {
+    try {
+      const response = await api.get(`/api/v1/investigations/${id}/findings/`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch investigation findings:', error);
+      throw error;
+    }
+  }
+
   static async updateInvestigation(id: string, data: any): Promise<any> {
     try {
-      const response = await api.put(`/api/v1/investigations/${id}`, data);
+      const response = await api.put(`/api/v1/investigations/${id}/`, data);
       return response.data;
     } catch (error) {
       console.error('Failed to update investigation:', error);
@@ -125,7 +149,7 @@ export class InvestigationService {
 
   static async deleteInvestigation(id: string): Promise<void> {
     try {
-      await api.delete(`/api/v1/investigations/${id}`);
+      await api.delete(`/api/v1/investigations/${id}/`);
     } catch (error) {
       console.error('Failed to delete investigation:', error);
       throw error;
@@ -133,22 +157,30 @@ export class InvestigationService {
   }
 }
 
-export class SocialMediaService {
-  static async scrapePlatform(platform: string, target: string, options: any = {}): Promise<any> {
+export const SocialMediaService = {
+  async scrapePlatform(platform: string, target: string) {
+    if (platform === 'profiles' && target === 'list') {
+      // List all profiles
+      try {
+        const response = await api.get('/api/v1/social-media/data');
+        return response.data;
+      } catch (error: any) {
+        if (error.response && error.response.status === 404) {
+          return [];
+        }
+        throw error;
+      }
+    }
+    // Scrape a profile
     try {
-      const response = await api.post('/api/v1/social-media/scrape', {
-        platform,
-        target,
-        ...options
-      });
+      const response = await api.post('/api/v1/social-media/scrape', { platform, target });
       return response.data;
-    } catch (error) {
-      console.error('Failed to scrape social media:', error);
+    } catch (error: any) {
       throw error;
     }
-  }
+  },
 
-  static async analyzeProfile(platform: string, username: string): Promise<any> {
+  async analyzeProfile(platform: string, username: string): Promise<any> {
     try {
       const response = await api.post('/api/v1/social-media/analyze', {
         platform,
@@ -159,9 +191,9 @@ export class SocialMediaService {
       console.error('Failed to analyze profile:', error);
       throw error;
     }
-  }
+  },
 
-  static async searchContent(platform: string, query: string, maxResults: number = 50): Promise<any> {
+  async searchContent(platform: string, query: string, maxResults: number = 50): Promise<any> {
     try {
       const response = await api.post('/api/v1/social-media/search', {
         platform,
@@ -174,20 +206,24 @@ export class SocialMediaService {
       throw error;
     }
   }
-}
+};
 
-export class AnalysisService {
-  static async getAnalysisResults(investigationId: string): Promise<any> {
-    try {
-      const response = await api.get(`/api/v1/analysis/${investigationId}`);
-      return response.data;
-    } catch (error) {
-      console.error('Failed to fetch analysis results:', error);
-      throw error;
+export const AnalysisService = {
+  async getAnalysisResults(type: string) {
+    if (type === 'all') {
+      // Fetch threat summary and network analysis separately
+      const [threat, network] = await Promise.all([
+        api.get('/api/v1/analysis/threat'),
+        api.get('/api/v1/analysis/network-graph/summary')
+      ]);
+      return { analysis_jobs: [threat.data, network.data] };
     }
-  }
+    // fallback for other types
+    const response = await api.get(`/api/v1/analysis/${type}`);
+    return response.data;
+  },
 
-  static async runAnalysis(data: any): Promise<any> {
+  async runAnalysis(data: any): Promise<any> {
     try {
       const response = await api.post('/api/v1/analysis/run', data);
       return response.data;
@@ -195,8 +231,20 @@ export class AnalysisService {
       console.error('Failed to run analysis:', error);
       throw error;
     }
+  },
+
+  async analyzeThreat(target: string, analysisType: string = 'comprehensive'): Promise<any> {
+    try {
+      const response = await api.post('/api/v1/analysis/threat', null, {
+        params: { target, analysis_type: analysisType }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to analyze threat:', error);
+      throw error;
+    }
   }
-}
+};
 
 export class IntelligenceService {
   static async getThreatIntelligence(): Promise<any> {
@@ -243,7 +291,8 @@ export class DashboardService {
 
   static async getRecentActivity(): Promise<any[]> {
     try {
-      const response = await api.get('/api/v1/dashboard/activity');
+      // Fetch recent investigations for the dashboard
+      const response = await api.get('/api/v1/investigations/');
       return response.data;
     } catch (error) {
       console.error('Failed to fetch recent activity:', error);
@@ -259,6 +308,59 @@ export class HealthService {
       return response.data;
     } catch (error) {
       console.error('Failed to check health:', error);
+      throw error;
+    }
+  }
+}
+
+export class ExportService {
+  static async listReports(): Promise<any[]> {
+    try {
+      const response = await api.get('/api/v1/exports/reports');
+      return response.data;
+    } catch (error: any) {
+      if (error.response && error.response.status === 404) {
+        return [];
+      }
+      throw error;
+    }
+  }
+
+  static async generateReport(data: any): Promise<any> {
+    try {
+      const response = await api.post('/api/v1/exports/report', data);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to generate report:', error);
+      throw error;
+    }
+  }
+
+  static async getReportContent(reportId: string): Promise<any> {
+    try {
+      const response = await api.get(`/api/v1/exports/reports/${reportId}/content`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get report content:', error);
+      throw error;
+    }
+  }
+
+  static async downloadReport(exportId: string): Promise<Blob> {
+    try {
+      const response = await api.get(`/api/v1/exports/${exportId}`, { responseType: 'blob' });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to download report:', error);
+      throw error;
+    }
+  }
+
+  static async deleteReport(exportId: string): Promise<void> {
+    try {
+      await api.delete(`/api/v1/exports/${exportId}`);
+    } catch (error) {
+      console.error('Failed to delete report:', error);
       throw error;
     }
   }

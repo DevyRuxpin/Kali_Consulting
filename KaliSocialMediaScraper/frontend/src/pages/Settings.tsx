@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
-  CogIcon, 
   ShieldCheckIcon, 
   GlobeAltIcon,
   ClockIcon,
@@ -111,12 +110,23 @@ const Settings: React.FC = () => {
     setSaveStatus('saving');
 
     try {
-      // Simulate API call to save settings
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Save settings to backend
+      const response = await fetch('/api/v1/settings/scraping', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(scrapingSettings),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save settings');
+      }
       
       setSaveStatus('success');
       setTimeout(() => setSaveStatus('idle'), 3000);
     } catch (error) {
+      console.error('Error saving settings:', error);
       setSaveStatus('error');
       setTimeout(() => setSaveStatus('idle'), 3000);
     } finally {
