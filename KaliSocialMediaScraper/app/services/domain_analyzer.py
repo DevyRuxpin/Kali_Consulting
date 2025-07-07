@@ -52,50 +52,119 @@ class DomainAnalyzer:
             await self.session.close()
     
     async def analyze_domain(self, domain: str) -> Dict[str, Any]:
-        """Comprehensive domain analysis"""
+        """Analyze a domain for security and threat information"""
         try:
-            # Clean domain
-            domain = self._clean_domain(domain)
+            import whois
+            import socket
+            import ssl
+            import requests
+            from datetime import datetime
             
-            # Basic domain information
-            domain_info = {
+            analysis = {
                 "domain": domain,
-                "analyzed_at": datetime.utcnow().isoformat()
+                "analysis_date": datetime.utcnow().isoformat(),
+                "whois_info": {},
+                "dns_records": {},
+                "ssl_certificate": {},
+                "security_headers": {},
+                "threat_indicators": {},
+                "risk_score": 0.0
             }
             
-            # DNS analysis
-            dns_data = await self._analyze_dns(domain)
-            domain_info["dns"] = dns_data
+            # WHOIS lookup
+            try:
+                w = whois.whois(domain)
+                analysis["whois_info"] = {
+                    "registrar": w.registrar,
+                    "creation_date": str(w.creation_date) if w.creation_date else "",
+                    "expiration_date": str(w.expiration_date) if w.expiration_date else "",
+                    "name_servers": w.name_servers if isinstance(w.name_servers, list) else [str(w.name_servers)] if w.name_servers else []
+                }
+            except Exception as e:
+                logger.warning(f"WHOIS lookup failed for {domain}: {e}")
             
-            # WHOIS analysis
-            whois_data = await self._analyze_whois(domain)
-            domain_info["whois"] = whois_data
+            # DNS records
+            try:
+                import dns.resolver
+                
+                record_types = ["A", "AAAA", "MX", "NS", "TXT", "CNAME"]
+                for record_type in record_types:
+                    try:
+                        answers = dns.resolver.resolve(domain, record_type)
+                        analysis["dns_records"][record_type] = [str(rdata) for rdata in answers.rrset]
+                    except Exception:
+                        analysis["dns_records"][record_type] = []
+            except Exception as e:
+                logger.warning(f"DNS lookup failed for {domain}: {e}")
             
-            # SSL certificate analysis
-            ssl_data = await self._analyze_ssl(domain)
-            domain_info["ssl"] = ssl_data
+            # SSL certificate
+            try:
+                context = ssl.create_default_context()
+                with socket.create_connection((domain, 443), timeout=10) as sock:
+                    with context.wrap_socket(sock, server_hostname=domain) as ssock:
+                        cert = ssock.getpeercert()
+                        if cert:
+                            analysis["ssl_certificate"] = {
+                                "subject": dict(x[0] for x in cert.get("subject", [])),
+                                "issuer": dict(x[0] for x in cert.get("issuer", [])),
+                                "not_before": cert.get("notBefore", ""),
+                                "not_after": cert.get("notAfter", ""),
+                                "serial_number": str(cert.get("serialNumber", ""))
+                            }
+            except Exception as e:
+                logger.warning(f"SSL certificate check failed for {domain}: {e}")
             
-            # Subdomain enumeration
-            subdomains = await self._enumerate_subdomains(domain)
-            domain_info["subdomains"] = subdomains
+            # Security headers
+            try:
+                response = requests.get(f"https://{domain}", timeout=10)
+                headers = response.headers
+                analysis["security_headers"] = {
+                    "strict_transport_security": headers.get("Strict-Transport-Security", ""),
+                    "x_frame_options": headers.get("X-Frame-Options", ""),
+                    "x_content_type_options": headers.get("X-Content-Type-Options", ""),
+                    "x_xss_protection": headers.get("X-XSS-Protection", ""),
+                    "content_security_policy": headers.get("Content-Security-Policy", "")
+                }
+            except Exception as e:
+                logger.warning(f"Security headers check failed for {domain}: {e}")
             
-            # Technology stack detection
-            tech_stack = await self._detect_technologies(domain)
-            domain_info["technologies"] = tech_stack
+            # Threat indicators
+            threat_score = 0.0
+            indicators = []
             
-            # Threat assessment
-            threat_assessment = await self._assess_domain_threat(domain, domain_info)
-            domain_info["threat_assessment"] = threat_assessment
+            # Check for suspicious patterns
+            if any(suspicious in domain.lower() for suspicious in ["malware", "virus", "hack", "crack"]):
+                indicators.append("suspicious_keywords_in_domain")
+                threat_score += 0.3
             
-            # IP geolocation
-            ip_geolocation = await self._get_ip_geolocation(domain)
-            domain_info["geolocation"] = ip_geolocation
+            # Check for newly registered domains
+            if analysis["whois_info"].get("creation_date"):
+                try:
+                    creation_date = datetime.strptime(analysis["whois_info"]["creation_date"][:10], "%Y-%m-%d")
+                    days_old = (datetime.now() - creation_date).days
+                    if days_old < 30:
+                        indicators.append("newly_registered_domain")
+                        threat_score += 0.2
+                except:
+                    pass
             
-            # Reputation check
-            reputation = await self._check_reputation(domain)
-            domain_info["reputation"] = reputation
+            # Check for missing security headers
+            security_headers = analysis["security_headers"]
+            if not security_headers.get("strict_transport_security"):
+                indicators.append("missing_hsts_header")
+                threat_score += 0.1
             
-            return domain_info
+            if not security_headers.get("x_frame_options"):
+                indicators.append("missing_frame_options")
+                threat_score += 0.1
+            
+            analysis["threat_indicators"] = {
+                "indicators": indicators,
+                "threat_score": min(threat_score, 1.0)
+            }
+            analysis["risk_score"] = min(threat_score, 1.0)
+            
+            return analysis
             
         except Exception as e:
             logger.error(f"Error analyzing domain {domain}: {e}")
@@ -118,21 +187,93 @@ class DomainAnalyzer:
             return {"error": str(e)}
     
     async def search_domains(self, query: str, max_results: int = 50) -> Dict[str, Any]:
-        """Search for domains related to a query"""
+        """Search for domains related to a query using real domain APIs"""
         try:
-            # This would integrate with domain search APIs
-            # For now, return simulated results
             results = []
-            for i in range(min(max_results, 20)):
-                result = {
-                    "domain": f"example{i}.com",
-                    "title": f"Sample domain {i}",
-                    "description": f"Sample domain related to {query}",
-                    "created_date": "2020-01-01",
-                    "registrar": "Sample Registrar",
-                    "status": "active"
+            
+            # Real domain search using multiple APIs
+            search_apis = [
+                {
+                    "name": "SecurityTrails",
+                    "url": f"https://api.securitytrails.com/v1/domain/search?query={query}",
+                    "headers": {"APIKEY": "YOUR_SECURITYTRAILS_API_KEY"}
+                },
+                {
+                    "name": "Censys",
+                    "url": f"https://search.censys.io/api/v2/hosts/search?q={query}",
+                    "headers": {"Authorization": "Bearer YOUR_CENSYS_API_TOKEN"}
                 }
-                results.append(result)
+            ]
+            
+            for api in search_apis:
+                try:
+                    response = requests.get(
+                        api["url"], 
+                        headers=api["headers"], 
+                        timeout=10
+                    )
+                    
+                    if response.status_code == 200:
+                        data = response.json()
+                        
+                        if api["name"] == "SecurityTrails":
+                            # Parse SecurityTrails response
+                            for record in data.get("records", [])[:max_results//2]:
+                                results.append({
+                                    "domain": record.get("hostname", ""),
+                                    "title": f"Domain related to {query}",
+                                    "description": f"Found via SecurityTrails search",
+                                    "created_date": record.get("created", ""),
+                                    "registrar": record.get("registrar", ""),
+                                    "status": "active" if record.get("status") else "inactive"
+                                })
+                        
+                        elif api["name"] == "Censys":
+                            # Parse Censys response
+                            for hit in data.get("result", {}).get("hits", [])[:max_results//2]:
+                                domain = hit.get("dns", {}).get("names", [""])[0]
+                                if domain:
+                                    results.append({
+                                        "domain": domain,
+                                        "title": f"Domain related to {query}",
+                                        "description": f"Found via Censys search",
+                                        "created_date": "",
+                                        "registrar": "",
+                                        "status": "active"
+                                    })
+                    
+                    # Rate limiting
+                    time.sleep(1)
+                    
+                except Exception as e:
+                    logger.warning(f"Error with {api['name']} API: {e}")
+                    continue
+            
+            # If no results from APIs, use DNS-based search
+            if not results:
+                try:
+                    import dns.resolver
+                    import dns.reversename
+                    
+                    # Try to find subdomains using DNS
+                    common_subdomains = ["www", "mail", "ftp", "admin", "blog", "api"]
+                    for subdomain in common_subdomains:
+                        try:
+                            test_domain = f"{subdomain}.{query}"
+                            dns.resolver.resolve(test_domain, "A")
+                            results.append({
+                                "domain": test_domain,
+                                "title": f"Subdomain found: {test_domain}",
+                                "description": f"DNS subdomain discovery",
+                                "created_date": "",
+                                "registrar": "",
+                                "status": "active"
+                            })
+                        except:
+                            continue
+                            
+                except Exception as e:
+                    logger.warning(f"DNS-based search failed: {e}")
             
             return {
                 "query": query,
@@ -229,7 +370,7 @@ class DomainAnalyzer:
         """Analyze WHOIS data for domain"""
         try:
             # Use python-whois library with better error handling
-            w = whois.query(domain)
+            w = whois.whois(domain)
             
             if w is None:
                 return {

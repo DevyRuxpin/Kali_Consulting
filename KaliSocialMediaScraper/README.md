@@ -1,486 +1,307 @@
 # Kali OSINT Social Media Scraper Platform
 
-## 🚀 CURRENT STATUS: ENHANCED & PRODUCTION-READY
+A comprehensive OSINT investigation platform for professional security research and law enforcement. This platform provides real-time social media scraping, threat analysis, network intelligence, and automated report generation.
 
-**Last Updated:** July 5, 2025  
-**Status:** ✅ **ENHANCED** - Advanced Anti-Detection & Real-Time Features  
-**Platform:** Enterprise-grade OSINT investigation platform with robust scraping capabilities
+## 🚀 Features
 
-## 📋 Project Overview
+### Core Functionality
+- **Real-time Social Media Scraping**: Multi-platform scraping (Twitter, Instagram, Reddit, GitHub, LinkedIn, Facebook, YouTube, TikTok, Telegram, Discord)
+- **Advanced Threat Analysis**: AI-powered threat assessment and risk scoring
+- **Network Intelligence**: Entity relationship mapping and community detection
+- **Domain Intelligence**: Comprehensive domain analysis and subdomain enumeration
+- **Automated Report Generation**: PDF, CSV, and JSON report formats
+- **Real-time Dashboard**: Live monitoring and progress tracking
+- **Settings Management**: Configurable scraping parameters and security settings
 
-A comprehensive OSINT (Open Source Intelligence) investigation platform designed for advanced security research, law enforcement, and threat intelligence gathering. The platform integrates multiple scraping tools and libraries covering a wide range of areas for advanced investigations, including extremist organizations and extremist groups.
+### Technical Capabilities
+- **Playwright-based Scraping**: Robust, stealthy web scraping with browser automation
+- **Rate Limiting & Proxy Support**: Configurable rate limits and proxy rotation
+- **Background Task Processing**: Asynchronous task processing with Celery
+- **WebSocket Real-time Updates**: Live progress updates and notifications
+- **Comprehensive Logging**: Detailed activity logging and error tracking
+- **API Documentation**: Auto-generated OpenAPI documentation
 
-### 🎯 Key Features
+## 📋 Requirements
 
-- **Advanced Anti-Detection Scraping**: Playwright-based scraping with user-agent rotation, proxy support, and random delays
-- **Multi-Platform Social Media Scraping**: GitHub, Twitter, Instagram, Telegram, Discord, Reddit, YouTube, LinkedIn, Facebook, TikTok
-- **Real-Time Intelligence Dashboard**: Live monitoring with WebSocket support and auto-reconnection
-- **Advanced OSINT Tools**: Domain analysis, network mapping, threat assessment
-- **Intelligence Engine**: Pattern detection, anomaly analysis, threat correlation
-- **Comprehensive Settings**: Configurable scraping behavior, proxy management, rate limiting
-- **Professional UI**: React-based frontend with modern design and real-time updates
-- **Comprehensive Reporting**: Detailed investigation reports and visualizations
+- Python 3.8+
+- Node.js 16+ (for frontend)
+- PostgreSQL (recommended) or SQLite
+- Redis (for background tasks)
+- Playwright browsers
 
-## 🏗️ Architecture
+## 🛠️ Installation
 
-### Backend (FastAPI) ✅ ENHANCED
-- **Framework**: FastAPI with async/await support
-- **Database**: PostgreSQL with SQLAlchemy ORM
-- **Background Tasks**: Celery with Redis
-- **Search**: Elasticsearch for advanced querying
-- **API Documentation**: Auto-generated with OpenAPI/Swagger
-- **Advanced Scraping**: Playwright with anti-detection measures
-- **Real-Time Features**: WebSocket support for live updates
+### 1. Clone the Repository
+```bash
+git clone <repository-url>
+cd KaliSocialMediaScraper
+```
 
-### Frontend (React) ✅ ENHANCED
-- **Framework**: React 18 with TypeScript
-- **Styling**: Tailwind CSS with Headless UI
-- **State Management**: Custom hooks with real-time data fetching
-- **Charts**: Recharts for data visualization
-- **Routing**: React Router v6
-- **Real-Time Updates**: WebSocket integration with auto-reconnection
-- **Error Handling**: Comprehensive error states and retry logic
+### 2. Install Python Dependencies
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Install Playwright Browsers
+```bash
+playwright install
+```
+
+### 4. Setup Database
+```bash
+# Run database migrations
+alembic upgrade head
+
+# Initialize database
+python -m app.utils.db_init
+```
+
+### 5. Install Frontend Dependencies
+```bash
+cd frontend
+npm install
+```
+
+## 🚀 Quick Start
+
+### Option 1: Automated Startup
+```bash
+# Run the automated startup script
+python start_platform.py
+```
+
+This script will:
+- Check and install missing dependencies
+- Setup the database
+- Install Playwright browsers
+- Start the backend server
+- Start the frontend development server
+
+### Option 2: Manual Startup
+
+#### Backend Server
+```bash
+# Start the FastAPI backend
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+#### Frontend Server
+```bash
+# Start the React frontend
+cd frontend
+npm start
+```
+
+## 🌐 Access Points
+
+- **Frontend UI**: http://localhost:3000
+- **Backend API**: http://localhost:8000
+- **API Documentation**: http://localhost:8000/docs
+- **Interactive API Docs**: http://localhost:8000/redoc
+
+## 🔧 Configuration
+
+### Environment Variables
+Create a `.env` file in the root directory:
+
+```env
+# Database
+DATABASE_URL=postgresql://user:password@localhost/kali_osint
+
+# Redis
+REDIS_URL=redis://localhost:6379
+
+# Security
+SECRET_KEY=your-secret-key-here
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+# API Settings
+ALLOWED_HOSTS=["http://localhost:3000", "http://localhost:8000"]
+
+# Scraping Settings
+DEFAULT_DELAY_MIN=2
+DEFAULT_DELAY_MAX=5
+MAX_RETRIES=3
+TIMEOUT_SECONDS=30
+```
+
+### Settings Management
+The platform includes a comprehensive settings management system accessible via:
+
+- **API Endpoints**: `/api/v1/settings`
+- **Frontend UI**: Settings page in the web interface
+
+Settings categories:
+- **Scraping**: User agent rotation, proxy settings, delays
+- **Rate Limits**: Request limits per minute/hour/day
+- **Security**: Threat detection thresholds, anomaly detection
+- **Notifications**: Email and webhook notifications
+
+## 📊 Usage Examples
+
+### 1. Social Media Investigation
+```python
+import requests
+
+# Create investigation
+investigation_data = {
+    "target_type": "username",
+    "target_value": "target_user",
+    "analysis_depth": "comprehensive",
+    "platforms": ["github", "twitter", "instagram"],
+    "include_network_analysis": True,
+    "include_threat_assessment": True
+}
+
+response = requests.post("http://localhost:8000/api/v1/investigations", json=investigation_data)
+investigation_id = response.json()["id"]
+```
+
+### 2. Domain Intelligence
+```python
+# Analyze domain
+domain_data = {
+    "domain": "example.com",
+    "include_subdomains": True,
+    "include_dns": True,
+    "include_whois": True
+}
+
+response = requests.post("http://localhost:8000/api/v1/analysis/domain", json=domain_data)
+```
+
+### 3. Report Generation
+```python
+# Generate PDF report
+report_data = {
+    "investigation_id": investigation_id,
+    "report_type": "pdf"
+}
+
+response = requests.post("http://localhost:8000/api/v1/exports/report", json=report_data)
+```
+
+## 🧪 Testing
+
+### Run Comprehensive Tests
+```bash
+# Test all functionality
+python test_real_functionality.py
+```
+
+This will test:
+- API health and connectivity
+- Real social media scraping
+- GitHub repository analysis
+- Domain intelligence
+- Threat analysis
+- Report generation
+- Settings management
+
+### Test Individual Components
+```bash
+# Test domain analyzer
+python test_domain_analyzer.py
+
+# Test specific functionality
+python test_functionality.py
+```
 
 ## 📁 Project Structure
 
 ```
 KaliSocialMediaScraper/
-├── app/                          # Backend application ✅ ENHANCED
-│   ├── api/v1/                   # API endpoints ✅
-│   │   ├── endpoints/            # Individual endpoint modules
-│   │   │   ├── investigations.py # Investigation management
-│   │   │   ├── social_media.py  # Social media scraping
-│   │   │   ├── analysis.py      # Intelligence analysis
-│   │   │   ├── exports.py       # Report generation
-│   │   │   ├── auth.py          # Authentication
-│   │   │   └── health.py        # Health monitoring
-│   ├── core/                     # Core configuration ✅
-│   │   ├── config.py            # Application settings
-│   │   ├── database.py          # Database connection
-│   │   ├── celery_app.py        # Background tasks
-│   │   └── middleware.py        # Request middleware
-│   ├── models/                   # Database models & schemas ✅
-│   │   ├── database.py          # SQLAlchemy models
-│   │   └── schemas.py           # Pydantic schemas
-│   ├── repositories/             # Data access layer ✅
-│   │   ├── base_repository.py   # Base repository pattern
-│   │   ├── investigation_repository.py
-│   │   ├── social_media_repository.py
-│   │   └── user_repository.py
-│   ├── services/                 # Business logic services ✅ ENHANCED
-│   │   ├── playwright_utils.py  # NEW: Anti-detection utilities
-│   │   ├── github_scraper.py    # GitHub data collection
-│   │   ├── social_media_scraper.py # ENHANCED: Playwright-based scraping
-│   │   ├── intelligence_engine.py # Advanced analysis
-│   │   ├── anomaly_detector.py  # Pattern detection
-│   │   ├── network_analyzer.py  # Network visualization
-│   │   ├── threat_analyzer.py   # Threat assessment
-│   │   ├── pattern_analyzer.py  # Pattern analysis
-│   │   ├── entity_resolver.py   # Entity correlation
-│   │   ├── threat_correlator.py # Threat correlation
-│   │   └── domain_analyzer.py   # Domain intelligence
-│   ├── tasks/                    # Background tasks ✅
-│   │   ├── investigation_tasks.py
-│   │   ├── scraping_tasks.py
-│   │   ├── analysis_tasks.py
-│   │   ├── report_tasks.py
-│   │   └── maintenance_tasks.py
-│   └── utils/                    # Utility functions ✅
-├── frontend/                     # React frontend ✅ ENHANCED
+├── app/                          # Backend application
+│   ├── api/                      # API endpoints
+│   ├── core/                     # Core configuration
+│   ├── models/                   # Database models
+│   ├── repositories/             # Data access layer
+│   ├── services/                 # Business logic
+│   └── tasks/                    # Background tasks
+├── frontend/                     # React frontend
 │   ├── src/
-│   │   ├── components/           # React components ✅ ENHANCED
-│   │   │   ├── Layout.tsx       # Main layout component
-│   │   │   └── RealTimeDashboard.tsx # ENHANCED: Real-time monitoring
-│   │   ├── pages/                # Page components ✅ ENHANCED
-│   │   │   ├── Dashboard.tsx    # ENHANCED: Real data integration
-│   │   │   ├── Investigations.tsx # Investigation management
-│   │   │   ├── SocialMedia.tsx  # Social media analysis
-│   │   │   ├── Analysis.tsx     # Intelligence analysis
-│   │   │   ├── Reports.tsx      # Report generation
-│   │   │   └── Settings.tsx     # NEW: Comprehensive configuration
-│   │   ├── services/             # API services ✅ ENHANCED
-│   │   │   └── api.ts           # ENHANCED: Comprehensive API client
-│   │   ├── hooks/                # NEW: Custom React hooks ✅
-│   │   │   ├── useRealTimeData.ts # Real-time data fetching
-│   │   │   └── useDashboardData.ts # Dashboard data management
-│   │   └── utils/                # Frontend utilities ✅
-│   └── public/                   # Static assets ✅
-├── docs/                         # Documentation ✅
-├── static/                       # Static files ✅
-└── alembic/                      # Database migrations ✅
+│   │   ├── components/           # React components
+│   │   ├── pages/                # Page components
+│   │   ├── services/             # API services
+│   │   └── hooks/                # Custom hooks
+├── alembic/                      # Database migrations
+├── static/                       # Static files
+├── reports/                      # Generated reports
+└── docs/                         # Documentation
 ```
 
-## 🚀 Current Implementation Status
+## 🔍 API Endpoints
 
-### ✅ Enhanced Operational Components
-
-#### Backend Infrastructure ✅ ENHANCED
-- ✅ FastAPI application structure with comprehensive API
-- ✅ Database models and schemas (PostgreSQL + SQLAlchemy)
-- ✅ API endpoints for all core functionality
-- ✅ Background task system with Celery and Redis
-- ✅ **NEW: Playwright-based scraping with anti-detection measures**
-- ✅ **ENHANCED: User-agent rotation and proxy support**
-- ✅ **ENHANCED: Random delays and retry logic**
-- ✅ Advanced scraping services (GitHub, social media)
-- ✅ Intelligence engine with pattern detection
-- ✅ Anomaly detection and threat analysis
-- ✅ Network analysis and visualization
-- ✅ Comprehensive error handling and logging
-- ✅ Health check endpoints and monitoring
-- ✅ CORS middleware configuration
-- ✅ Authentication and authorization system
-
-#### Frontend Infrastructure ✅ ENHANCED
-- ✅ React application structure with TypeScript
-- ✅ Modern UI components with Tailwind CSS
-- ✅ **ENHANCED: Real-time data integration**
-- ✅ **NEW: Custom hooks for data management**
-- ✅ **ENHANCED: WebSocket support with auto-reconnection**
-- ✅ **NEW: Comprehensive settings interface**
-- ✅ Dashboard and investigation pages
-- ✅ Data visualization components
-- ✅ Form handling and validation
-- ✅ API integration services
-- ✅ Responsive design and routing
-- ✅ State management with custom hooks
-- ✅ Real-time updates and notifications
-
-#### Infrastructure ✅
-- ✅ Docker configuration for all services
-- ✅ Database setup with PostgreSQL
-- ✅ Redis for caching and message queue
-- ✅ Environment configuration management
-- ✅ Development and production setups
-- ✅ Health monitoring and logging
-
-#### Core Services ✅ ENHANCED
-- ✅ **GitHub Scraper**: Repository analysis, user profiling, organization data
-- ✅ **ENHANCED Social Media Scraper**: Playwright-based multi-platform scraping
-- ✅ **NEW: Anti-Detection Features**: User-agent rotation, proxy support, random delays
-- ✅ **Intelligence Engine**: Advanced pattern detection and analysis
-- ✅ **Anomaly Detector**: Behavioral analysis and threat detection
-- ✅ **Network Analyzer**: Graph generation and visualization
-- ✅ **Threat Analyzer**: Risk assessment and scoring
-- ✅ **Pattern Analyzer**: Advanced pattern recognition
-- ✅ **Entity Resolver**: Entity correlation and linking
-- ✅ **Domain Analyzer**: Domain intelligence and analysis
-
-## 🔧 Installation & Setup
-
-### Prerequisites
-
-- Python 3.11+ (3.13 recommended)
-- Node.js 18+ 
-- PostgreSQL 13+
-- Redis 6+
-- Homebrew (macOS)
-
-### Quick Start
-
-```bash
-# Clone repository
-git clone <repository-url>
-cd KaliSocialMediaScraper
-
-# Backend Setup
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-
-# Database Setup
-createdb kali_osint_db
-createdb kali_osint_test
-
-# Run migrations
-alembic upgrade head
-
-# Start backend server
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-
-# Frontend Setup (in new terminal)
-cd frontend
-npm install --legacy-peer-deps
-npm start
-```
-
-### Docker Setup
-
-```bash
-# Start all services
-docker-compose up -d
-
-# Access the application
-# Frontend: http://localhost:3000
-# Backend API: http://localhost:8000
-# API Docs: http://localhost:8000/docs
-```
-
-## 🧪 Testing
-
-### Health Checks
-```bash
-# Backend Health
-curl http://localhost:8000/health
-
-# Frontend Health
-curl http://localhost:3000
-
-# Database Health
-psql -h localhost -U kali_user -d kali_osint_db -c "SELECT 1;"
-```
-
-### API Testing
-```bash
-# Access API documentation
-open http://localhost:8000/docs
-
-# Test investigation creation
-curl -X POST "http://localhost:8000/api/v1/investigations" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "Test Investigation",
-    "target_type": "DOMAIN",
-    "target_value": "example.com",
-    "analysis_options": {
-      "include_network_analysis": true,
-      "include_threat_assessment": true
-    }
-  }'
-```
-
-## 📊 API Endpoints
-
-### Core Endpoints
-- `GET /` - Root endpoint with platform info
-- `GET /health` - Comprehensive health check
-- `GET /docs` - Interactive API documentation
-
-### Investigation Endpoints
-- `POST /api/v1/investigations` - Create new investigation
-- `GET /api/v1/investigations` - List all investigations
+### Investigations
+- `POST /api/v1/investigations` - Create investigation
+- `GET /api/v1/investigations` - List investigations
 - `GET /api/v1/investigations/{id}` - Get investigation details
-- `PUT /api/v1/investigations/{id}` - Update investigation
-- `DELETE /api/v1/investigations/{id}` - Delete investigation
 
-### Analysis Endpoints
+### Social Media
+- `POST /api/v1/social-media/scrape` - Scrape social media profiles
+- `GET /api/v1/social-media/search` - Search social media content
+
+### Analysis
+- `POST /api/v1/analysis/domain` - Analyze domain
 - `POST /api/v1/analysis/threat` - Threat analysis
-- `GET /api/v1/analysis/network-graph/{entity_id}` - Network visualization
-- `GET /api/v1/analysis/timeline/{entity_id}` - Timeline data
-- `POST /api/v1/analysis/domain` - Domain analysis
+- `GET /api/v1/analysis/network/{entity_id}` - Network analysis
 
-### Social Media Endpoints
-- `POST /api/v1/social-media/scrape` - Scrape social media data
-- `GET /api/v1/social-media/platforms` - List available platforms
-- `GET /api/v1/social-media/data/{investigation_id}` - Get collected data
+### Reports
+- `POST /api/v1/exports/investigation/{id}/pdf` - Generate PDF report
+- `POST /api/v1/exports/investigation/{id}/csv` - Generate CSV report
+- `POST /api/v1/exports/investigation/{id}/json` - Generate JSON report
 
-### Export Endpoints
-- `POST /api/v1/exports/report` - Generate investigation report
-- `GET /api/v1/exports/{export_id}` - Download report
-- `GET /api/v1/exports/formats` - List available formats
+### Settings
+- `GET /api/v1/settings` - Get platform settings
+- `PUT /api/v1/settings/{category}` - Update settings
+- `POST /api/v1/settings/reset` - Reset settings to defaults
 
-## 🎯 Current Capabilities
+## 🛡️ Security Features
 
-### Investigation Management
-- ✅ Create and manage investigations
-- ✅ Track investigation progress
-- ✅ Configure analysis options
-- ✅ Monitor real-time status
-- ✅ Generate comprehensive reports
+- **Rate Limiting**: Configurable request limits
+- **Proxy Support**: Rotating proxy support for anonymity
+- **User Agent Rotation**: Automatic user agent rotation
+- **Threat Detection**: AI-powered threat assessment
+- **Anomaly Detection**: Automated anomaly identification
+- **Input Validation**: Comprehensive input sanitization
+- **Error Handling**: Secure error handling and logging
 
-### Data Collection ✅ ENHANCED
-- ✅ GitHub repository analysis
-- ✅ **ENHANCED: Multi-platform social media scraping with anti-detection**
-- ✅ **NEW: Playwright-based scraping for Twitter, Instagram, YouTube**
-- ✅ Domain intelligence gathering
-- ✅ Network relationship mapping
-- ✅ Timeline data collection
+## 📈 Performance
 
-### Intelligence Analysis
-- ✅ Threat assessment and scoring
-- ✅ Pattern detection and analysis
-- ✅ Anomaly detection
-- ✅ Entity correlation
-- ✅ Network visualization
-
-### Reporting & Export
-- ✅ PDF report generation
-- ✅ JSON data export
-- ✅ CSV data export
-- ✅ HTML report generation
-- ✅ Custom report templates
-
-## 🔍 Advanced Features
-
-### GitHub Intelligence
-- Repository analysis and profiling
-- User activity monitoring
-- Organization structure analysis
-- Code pattern detection
-- Threat indicator identification
-
-### Social Media Analysis ✅ ENHANCED
-- **ENHANCED: Multi-platform data collection with anti-detection**
-- **NEW: Playwright-based scraping for robust data collection**
-- **NEW: User-agent rotation and proxy support**
-- **NEW: Random delays and retry logic**
-- Profile analysis and scoring
-- Content sentiment analysis
-- Network relationship mapping
-- Behavioral pattern detection
-
-### Domain Intelligence
-- DNS record analysis
-- WHOIS data collection
-- SSL certificate analysis
-- Subdomain enumeration
-- Technology stack identification
-
-### Network Analysis
-- Graph-based relationship mapping
-- Community detection
-- Centrality analysis
-- Threat hotspot identification
-- Timeline visualization
-
-## 🚀 Production Deployment
-
-### Environment Variables
-```bash
-# Database
-DATABASE_URL=postgresql://user:password@localhost/kali_osint
-REDIS_URL=redis://localhost:6379/0
-
-# Security
-SECRET_KEY=your-production-secret-key
-ENVIRONMENT=production
-
-# API Keys (Optional)
-GITHUB_TOKEN=your-github-token
-TWITTER_API_KEY=your-twitter-api-key
-
-# NEW: Anti-Detection Settings
-ENABLE_PROXY_ROTATION=false
-ENABLE_USER_AGENT_ROTATION=true
-DEFAULT_DELAY_MIN=2
-DEFAULT_DELAY_MAX=5
-MAX_RETRIES=3
-```
-
-### Docker Production
-```bash
-# Build and run production containers
-docker-compose -f docker-compose.prod.yml up -d
-
-# Monitor logs
-docker-compose logs -f
-
-# Scale services
-docker-compose up -d --scale celery=3
-```
-
-## 📈 Performance & Monitoring
-
-### Health Monitoring
-- ✅ Real-time health checks
-- ✅ Service status monitoring
-- ✅ Performance metrics
-- ✅ Error tracking and logging
-- ✅ Resource utilization monitoring
-
-### Background Processing
-- ✅ Celery worker management
-- ✅ Task queue monitoring
-- ✅ Progress tracking
-- ✅ Error recovery
-- ✅ Resource optimization
-
-## 🔒 Security Features
-
-### Authentication & Authorization
-- ✅ User authentication system
-- ✅ Role-based access control
-- ✅ API key management
-- ✅ Session management
-- ✅ Audit logging
-
-### Data Protection
-- ✅ Encrypted data storage
-- ✅ Secure API communication
-- ✅ Input validation and sanitization
-- ✅ Rate limiting
-- ✅ CORS protection
-
-### NEW: Anti-Detection Security
-- ✅ User-agent rotation
-- ✅ Proxy support and rotation
-- ✅ Random delays between requests
-- ✅ Retry logic with exponential backoff
-- ✅ Comprehensive error handling
-
-## 🎉 Success Metrics
-
-### Technical Achievements
-- ✅ Complete full-stack application
-- ✅ Advanced OSINT capabilities
-- ✅ **NEW: Enterprise-grade anti-detection scraping**
-- ✅ **NEW: Real-time data integration**
-- ✅ **NEW: Comprehensive settings management**
-- ✅ Real-time processing
-- ✅ Scalable architecture
-- ✅ Production-ready deployment
-
-### Feature Completeness
-- ✅ 100% Core functionality implemented
-- ✅ **ENHANCED: Advanced intelligence features with anti-detection**
-- ✅ **NEW: Real-time dashboard with WebSocket support**
-- ✅ **NEW: Comprehensive settings interface**
-- ✅ Comprehensive reporting system
-- ✅ Professional user interface
-- ✅ Robust error handling
+- **Asynchronous Processing**: Non-blocking operations
+- **Background Tasks**: Celery-based task queue
+- **Caching**: Redis-based caching for performance
+- **Connection Pooling**: Efficient database connections
+- **Memory Management**: Optimized memory usage
 
 ## 🤝 Contributing
 
-### Development Setup
-```bash
-# Install development dependencies
-pip install -r requirements-dev.txt
-
-# Run tests
-pytest
-
-# Code formatting
-black app/
-isort app/
-
-# Type checking
-mypy app/
-```
-
-### Code Standards
-- Follow PEP 8 for Python code
-- Use TypeScript for frontend code
-- Write comprehensive tests
-- Document all API endpoints
-- Maintain security best practices
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests for new functionality
+5. Submit a pull request
 
 ## 📄 License
 
-Commercial Use Forbidden, Open Source Otherwise, Kali Consulting LLC
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## ⚠️ Disclaimer
+
+This platform is designed for legitimate OSINT research and law enforcement purposes only. Users are responsible for complying with all applicable laws and terms of service when using this tool.
 
 ## 🆘 Support
 
-### Documentation
-- API Documentation: http://localhost:8000/docs
-- Code Documentation: Available in `/docs` directory
-- Architecture Overview: See project structure above
+For issues and questions:
+- Check the API documentation at `/docs`
+- Review the test files for usage examples
+- Open an issue on GitHub
 
-### Troubleshooting
-- Check health endpoints for service status
-- Review logs for error details
-- Verify database connections
-- Test API endpoints individually
+## 🔄 Updates
 
----
-
-**Status**: ✅ **ENHANCED & PRODUCTION READY** - Advanced anti-detection features with real-time capabilities 
+The platform is actively maintained with regular updates for:
+- New social media platforms
+- Enhanced scraping capabilities
+- Improved threat analysis
+- Bug fixes and performance improvements 

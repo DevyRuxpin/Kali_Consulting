@@ -4,7 +4,7 @@ Main API router for v1 endpoints
 
 from fastapi import APIRouter
 
-from .endpoints import investigations, social_media, analysis, exports, intelligence
+from .endpoints import investigations, social_media, analysis, exports, intelligence, dashboard, settings
 
 api_router = APIRouter()
 
@@ -37,4 +37,16 @@ api_router.include_router(
     intelligence.router,
     prefix="/intelligence",
     tags=["intelligence"]
+)
+
+api_router.include_router(
+    dashboard.router,
+    prefix="/dashboard",
+    tags=["dashboard"]
+)
+
+api_router.include_router(
+    settings.router,
+    prefix="/settings",
+    tags=["settings"]
 ) 

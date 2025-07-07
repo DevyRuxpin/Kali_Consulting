@@ -370,4 +370,37 @@ async def perform_ml_analysis(
         
         logger.info(f"ML analysis completed for investigation {investigation_id}")
     except Exception as e:
-        logger.error(f"Error in background ML analysis: {e}") 
+        logger.error(f"Error in background ML analysis: {e}")
+
+@router.get("/threats")
+async def get_threat_intelligence():
+    """Get threat intelligence data"""
+    try:
+        return {
+            "threats": [],
+            "threat_level": "low",
+            "last_updated": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error getting threat intelligence: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/network/{investigation_id}")
+async def get_network_analysis(investigation_id: str):
+    """Get network analysis for an investigation"""
+    try:
+        return {
+            "investigation_id": investigation_id,
+            "network_graph": {
+                "nodes": [],
+                "edges": []
+            },
+            "analysis": {
+                "centrality": {},
+                "communities": [],
+                "threat_hotspots": []
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error getting network analysis: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) 

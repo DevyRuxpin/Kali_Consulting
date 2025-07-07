@@ -31,7 +31,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 class AuthService:
     def __init__(self):
-        self.user_repository = UserRepository()
+        pass  # Remove UserRepository instantiation here
     
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
         """Verify a password against its hash."""
@@ -63,24 +63,28 @@ class AuthService:
     
     def authenticate_user(self, db: Session, username: str, password: str) -> Optional[User]:
         """Authenticate a user with username and password."""
-        user = self.user_repository.get_by_username(db, username)
-        if not user:
+        if not isinstance(username, str) or not isinstance(password, str):
             return None
-        if not self.verify_password(password, user.hashed_password):
+        user_repo = UserRepository(db)
+        user = user_repo.get_by_username(username)
+        if not user or not getattr(user, "hashed_password", None):
+            return None
+        if not self.verify_password(password, str(user.hashed_password)):
             return None
         return user
     
-    def create_user(self, db: Session, username: str, email: str, password: str, full_name: str = None) -> User:
+    def create_user(self, db: Session, username: str, email: str, password: str, full_name: Optional[str] = None) -> User:
         """Create a new user."""
+        user_repo = UserRepository(db)
         # Check if user already exists
-        existing_user = self.user_repository.get_by_username(db, username)
+        existing_user = user_repo.get_by_username(username)
         if existing_user:
             raise HTTPException(
                 status_code=400,
                 detail="Username already registered"
             )
         
-        existing_email = self.user_repository.get_by_email(db, email)
+        existing_email = user_repo.get_by_email(email)
         if existing_email:
             raise HTTPException(
                 status_code=400,
@@ -98,7 +102,7 @@ class AuthService:
             "is_superuser": False
         }
         
-        return self.user_repository.create(db, user_data)
+        return user_repo.create(user_data)
     
     def get_current_user(self, db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)) -> User:
         """Get the current authenticated user."""
@@ -112,25 +116,26 @@ class AuthService:
         if payload is None:
             raise credentials_exception
         
-        username: str = payload.get("sub")
-        if username is None:
+        username = payload.get("sub")
+        if not isinstance(username, str) or not username:
             raise credentials_exception
         
-        user = self.user_repository.get_by_username(db, username)
+        user_repo = UserRepository(db)
+        user = user_repo.get_by_username(username)
         if user is None:
             raise credentials_exception
         
         return user
     
-    def get_current_active_user(self, current_user: User = Depends(get_current_user)) -> User:
+    def get_current_active_user(self, current_user: User = Depends(lambda: get_current_user())) -> User:
         """Get the current active user."""
-        if not current_user.is_active:
+        if not getattr(current_user, "is_active", False):
             raise HTTPException(status_code=400, detail="Inactive user")
         return current_user
     
-    def get_current_superuser(self, current_user: User = Depends(get_current_user)) -> User:
+    def get_current_superuser(self, current_user: User = Depends(lambda: get_current_user())) -> User:
         """Get the current superuser."""
-        if not current_user.is_superuser:
+        if not getattr(current_user, "is_superuser", False):
             raise HTTPException(
                 status_code=400, 
                 detail="The user doesn't have enough privileges"

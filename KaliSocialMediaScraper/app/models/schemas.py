@@ -58,6 +58,9 @@ class InvestigationRequest(BaseModel):
     include_timeline_analysis: bool = Field(True, description="Include timeline analysis")
     include_threat_assessment: bool = Field(True, description="Include threat assessment")
     analysis_options: Dict[str, Any] = Field(default_factory=dict, description="Additional analysis options")
+    search_timeframe: str = Field("all", description="Search timeframe (all, last_24h, last_7d, last_30d, last_90d, last_year, custom)")
+    date_range_start: Optional[str] = Field(None, description="Start date for custom date range (YYYY-MM-DD)")
+    date_range_end: Optional[str] = Field(None, description="End date for custom date range (YYYY-MM-DD)")
 
 class SocialMediaScrapingRequest(BaseModel):
     platform: PlatformType = Field(..., description="Social media platform")
@@ -316,4 +319,31 @@ class Investigation(BaseModel):
     status: InvestigationStatus = Field(..., description="Investigation status")
     created_at: datetime = Field(..., description="Creation timestamp")
     social_media_data: List[Dict[str, Any]] = Field(default_factory=list, description="Social media data")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Investigation metadata") 
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Investigation metadata")
+
+# Authentication Schemas
+class UserCreate(BaseModel):
+    username: str = Field(..., min_length=3, max_length=50)
+    email: str = Field(..., description="Valid email address")
+    password: str = Field(..., min_length=8)
+    full_name: Optional[str] = Field(None, max_length=100)
+
+class User(BaseModel):
+    id: int = Field(..., description="User ID")
+    username: str = Field(..., description="Username")
+    email: str = Field(..., description="Email address")
+    full_name: Optional[str] = Field(None, description="Full name")
+    is_active: bool = Field(True, description="Active status")
+    is_superuser: bool = Field(False, description="Superuser status")
+    created_at: datetime = Field(..., description="Creation timestamp")
+
+    class Config:
+        from_attributes = True
+
+class Token(BaseModel):
+    access_token: str = Field(..., description="Access token")
+    token_type: str = Field(..., description="Token type")
+    user: User = Field(..., description="User information")
+
+class TokenData(BaseModel):
+    username: Optional[str] = Field(None, description="Username from token") 

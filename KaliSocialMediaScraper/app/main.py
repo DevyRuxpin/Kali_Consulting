@@ -2,13 +2,15 @@
 Main FastAPI application for Kali OSINT Investigation Platform
 """
 
-from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
+from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 import uvicorn
 from typing import List, Optional, Dict, Any
 import logging
+import json
+from datetime import datetime
 
 from app.core.config import settings
 # Database and API imports
@@ -34,6 +36,31 @@ from app.models.schemas import (
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# WebSocket connection manager
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
+
+    async def send_personal_message(self, message: str, websocket: WebSocket):
+        await websocket.send_text(message)
+
+    async def broadcast(self, message: str):
+        for connection in self.active_connections:
+            try:
+                await connection.send_text(message)
+            except:
+                # Remove disconnected clients
+                self.active_connections.remove(connection)
+
+manager = ConnectionManager()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -210,6 +237,71 @@ async def run_comprehensive_investigation(
         
     except Exception as e:
         logger.error(f"Comprehensive investigation error: {e}")
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    """WebSocket endpoint for real-time updates"""
+    await manager.connect(websocket)
+    try:
+        # Send initial connection message
+        status_data = {
+            "type": "status",
+            "message": "Connected to Kali OSINT Platform",
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        await websocket.send_text(json.dumps(status_data))
+        
+        # Send periodic updates every 30 seconds
+        import asyncio
+        last_update = datetime.utcnow()
+        
+        while True:
+            try:
+                current_time = datetime.utcnow()
+                
+                # Send periodic updates every 30 seconds
+                if (current_time - last_update).total_seconds() >= 30:
+                    real_time_data = {
+                        "type": "real_time_data",
+                        "data": {
+                            "active_investigations": 0,  # Will be populated from database
+                            "threats_detected": 0,
+                            "entities_monitored": 0,
+                            "network_activity": 0,
+                            "anomaly_score": 0.0
+                        },
+                        "timestamp": current_time.isoformat()
+                    }
+                    await websocket.send_text(json.dumps(real_time_data))
+                    last_update = current_time
+                
+                # Wait for client messages with a shorter timeout
+                try:
+                    client_message = await asyncio.wait_for(
+                        websocket.receive_text(), 
+                        timeout=5.0  # Shorter timeout to check for updates more frequently
+                    )
+                    if client_message:
+                        # Echo back the message
+                        echo_data = {
+                            "type": "echo",
+                            "message": client_message,
+                            "timestamp": datetime.utcnow().isoformat()
+                        }
+                        await websocket.send_text(json.dumps(echo_data))
+                except asyncio.TimeoutError:
+                    # No message received, continue the loop
+                    continue
+                    
+            except Exception as e:
+                logger.error(f"WebSocket error: {e}")
+                break
+                
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+    except Exception as e:
+        logger.error(f"WebSocket connection error: {e}")
+        manager.disconnect(websocket)
 
 if __name__ == "__main__":
     uvicorn.run(

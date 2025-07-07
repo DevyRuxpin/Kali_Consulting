@@ -86,4 +86,20 @@ class SocialMediaRepository(BaseRepository[SocialMediaData]):
             "verified_profiles": verified_profiles,
             "high_threat_profiles": high_threat_profiles,
             "verification_rate": (verified_profiles / total_profiles * 100) if total_profiles > 0 else 0
-        } 
+        }
+    
+    def count_all(self) -> int:
+        """Count all social media profiles"""
+        return self.db.query(SocialMediaData).count()
+    
+    def count_high_threat_profiles(self, threshold: float = 0.7) -> int:
+        """Count profiles with high threat scores"""
+        return self.db.query(SocialMediaData).filter(
+            SocialMediaData.threat_score >= threshold
+        ).count()
+    
+    def get_recent_profiles(self, limit: int = 10) -> List[SocialMediaData]:
+        """Get recent social media profiles"""
+        return self.db.query(SocialMediaData).order_by(
+            desc(SocialMediaData.collected_at)
+        ).limit(limit).all() 

@@ -53,25 +53,55 @@ class InvestigationRepository(BaseRepository[Investigation]):
     
     def add_social_media_data(self, investigation_id: str, social_data: Dict[str, Any]) -> bool:
         """Add social media data to investigation"""
-        investigation = self.get_investigation(investigation_id)
-        if investigation:
-            if not investigation.social_media_data:
-                investigation.social_media_data = []
-            investigation.social_media_data.append(social_data)
+        try:
+            # Create a proper SocialMediaData object
+            social_obj = SocialMediaData(
+                investigation_id=int(investigation_id),
+                platform_id=1,  # Default platform ID, should be passed from caller
+                username=social_data.get("username", ""),
+                display_name=social_data.get("display_name", ""),
+                bio=social_data.get("bio", ""),
+                followers_count=social_data.get("followers_count", 0),
+                following_count=social_data.get("following_count", 0),
+                posts_count=social_data.get("posts_count", 0),
+                profile_url=social_data.get("profile_url", ""),
+                is_verified=social_data.get("is_verified", False),
+                is_private=social_data.get("is_private", False),
+                threat_score=social_data.get("threat_score", 0.0),
+                threat_indicators=social_data.get("threat_indicators", []),
+                sentiment_score=social_data.get("sentiment_score", 0.0)
+            )
+            self.db.add(social_obj)
             self.db.commit()
             return True
-        return False
+        except Exception as e:
+            print(f"Error adding social media data: {e}")
+            self.db.rollback()
+            return False
     
     def add_domain_data(self, investigation_id: str, domain_data: Dict[str, Any]) -> bool:
         """Add domain data to investigation"""
-        investigation = self.get_investigation(investigation_id)
-        if investigation:
-            if not investigation.domain_data:
-                investigation.domain_data = []
-            investigation.domain_data.append(domain_data)
+        try:
+            # Create a proper DomainData object
+            domain_obj = DomainData(
+                investigation_id=int(investigation_id),
+                domain=domain_data.get("domain", ""),
+                ip_addresses=domain_data.get("ip_addresses", []),
+                subdomains=domain_data.get("subdomains", []),
+                dns_records=domain_data.get("dns_records", {}),
+                whois_data=domain_data.get("whois_data", {}),
+                ssl_certificate=domain_data.get("ssl_certificate", {}),
+                technologies=domain_data.get("technologies", []),
+                threat_indicators=domain_data.get("threat_indicators", []),
+                threat_score=domain_data.get("threat_score", 0.0)
+            )
+            self.db.add(domain_obj)
             self.db.commit()
             return True
-        return False
+        except Exception as e:
+            print(f"Error adding domain data: {e}")
+            self.db.rollback()
+            return False
     
     def save_analysis_results(self, investigation_id: str, analysis_result: Any) -> bool:
         """Save analysis results"""
@@ -292,4 +322,37 @@ class InvestigationRepository(BaseRepository[Investigation]):
             "completed": completed,
             "failed": failed,
             "success_rate": (completed / total * 100) if total > 0 else 0
-        } 
+        }
+    
+    def count_all(self) -> int:
+        """Count all investigations"""
+        return self.db.query(Investigation).count()
+    
+    def count_by_status(self, status: str) -> int:
+        """Count investigations by status"""
+        return self.db.query(Investigation).filter(Investigation.status == status).count()
+    
+    def get_count_by_status(self) -> Dict[str, int]:
+        """Get count of investigations by status"""
+        return {
+            "completed": self.count_by_status("completed"),
+            "failed": self.count_by_status("failed"),
+            "in_progress": self.count_by_status("in_progress"),
+            "pending": self.count_by_status("pending")
+        }
+    
+    def get_count_by_target_type(self) -> Dict[str, int]:
+        """Get count of investigations by target type"""
+        from sqlalchemy import func
+        result = self.db.query(
+            Investigation.target_type,
+            func.count(Investigation.id)
+        ).group_by(Investigation.target_type).all()
+        
+        return dict(result)
+    
+    def get_updates_since(self, since_time: datetime) -> List[Investigation]:
+        """Get investigations updated since a specific time"""
+        return self.db.query(Investigation).filter(
+            Investigation.updated_at >= since_time
+        ).all() 

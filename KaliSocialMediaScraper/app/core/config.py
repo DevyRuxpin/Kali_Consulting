@@ -13,8 +13,8 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     
     # Database
-    DATABASE_URL: str = "postgresql://user:password@localhost/kali_osint"
-    DATABASE_TEST_URL: str = "postgresql://kali_user:kali_pass@localhost:5432/kali_osint_test"
+    DATABASE_URL: str = "sqlite:///./kali_osint.db"
+    DATABASE_TEST_URL: str = "sqlite:///./kali_osint_test.db"
     ELASTICSEARCH_URL: str = "http://localhost:9200"
     
     # Redis

@@ -17,6 +17,7 @@ from app.models.schemas import (
     ThreatAssessment,
     ThreatLevel
 )
+from app.services.proxy_rotator import proxy_rotator
 
 logger = logging.getLogger(__name__)
 
@@ -40,22 +41,32 @@ class SocialMediaScraper:
         
     async def __aenter__(self):
         """Async context manager entry"""
-        self.session = aiohttp.ClientSession(
-            headers={
-                "User-Agent": "Kali-OSINT-Platform/1.0",
-                "Accept": "application/json, text/html, */*",
-                "Accept-Language": "en-US,en;q=0.9",
-                "Accept-Encoding": "gzip, deflate, br",
-                "Connection": "keep-alive",
-                "Upgrade-Insecure-Requests": "1"
-            }
-        )
+        # Use proxy rotator for session creation
+        self.session = await proxy_rotator.create_session_with_proxy()
+        if not self.session:
+            # Fallback to regular session if no proxies available
+            self.session = aiohttp.ClientSession(
+                headers={
+                    "User-Agent": "Kali-OSINT-Platform/1.0",
+                    "Accept": "application/json, text/html, */*",
+                    "Accept-Language": "en-US,en;q=0.9",
+                    "Accept-Encoding": "gzip, deflate, br",
+                    "Connection": "keep-alive",
+                    "Upgrade-Insecure-Requests": "1"
+                }
+            )
         return self
         
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit"""
         if self.session:
             await self.session.close()
+    
+    def _ensure_session(self):
+        """Ensure session is available"""
+        if not self.session:
+            raise RuntimeError("Session not initialized. Use async context manager.")
+        return self.session
     
     async def scrape_platform(
         self,
@@ -101,17 +112,18 @@ class SocialMediaScraper:
     async def analyze_profile(
         self,
         platform: PlatformType,
-        username: str
+        username: str,
+        date_range: Optional[Dict[str, str]] = None
     ) -> Dict[str, Any]:
-        """Analyze social media profile comprehensively"""
+        """Analyze social media profile comprehensively with optional date range filtering"""
         try:
             # Get profile data
             profile_data = await self._get_profile_data(platform, username)
             if not profile_data:
                 return {"error": "Profile not found or inaccessible"}
             
-            # Get recent posts
-            posts = await self._get_recent_posts(platform, username)
+            # Get recent posts with date range filtering
+            posts = await self._get_recent_posts(platform, username, date_range=date_range)
             
             # Get followers/following data
             network_data = await self._get_network_data(platform, username)
@@ -130,6 +142,7 @@ class SocialMediaScraper:
                 "network": network_data,
                 "threat_assessment": threat_assessment,
                 "sentiment_analysis": sentiment_data,
+                "date_range": date_range,
                 "analyzed_at": datetime.utcnow().isoformat()
             }
             
@@ -1197,24 +1210,61 @@ class SocialMediaScraper:
             logger.error(f"Error getting profile data: {e}")
             return None
     
-    async def _get_recent_posts(self, platform: PlatformType, username: str) -> List[Dict[str, Any]]:
-        """Get recent posts for platform using real scraping"""
+    async def _get_recent_posts(self, platform: PlatformType, username: str, date_range: Optional[Dict[str, str]] = None) -> List[Dict[str, Any]]:
+        """Get recent posts for platform using real scraping with date range filtering"""
         try:
-            # Use the platform-specific scraping methods
+            # Platform-specific post retrieval
             if platform == PlatformType.TWITTER:
-                result = await self._scrape_twitter(username, include_metadata=True, max_posts=10)
-                return result.get("posts", []) if "error" not in result else []
+                result = await self._scrape_twitter(username, include_metadata=True, max_posts=50)
+                posts = result.get("posts", []) if "error" not in result else []
+            elif platform == PlatformType.INSTAGRAM:
+                result = await self._scrape_instagram(username, include_metadata=True, max_posts=50)
+                posts = result.get("posts", []) if "error" not in result else []
             elif platform == PlatformType.REDDIT:
-                result = await self._scrape_reddit(username, include_metadata=True, max_posts=10)
-                return result.get("posts", []) if "error" not in result else []
+                result = await self._scrape_reddit(username, include_metadata=True, max_posts=50)
+                posts = result.get("posts", []) if "error" not in result else []
             elif platform == PlatformType.GITHUB:
-                result = await self._scrape_github(username, include_metadata=True, max_posts=10)
-                return result.get("activity", []) if "error" not in result else []
+                result = await self._scrape_github(username, include_metadata=True, max_posts=50)
+                posts = result.get("activity", []) if "error" not in result else []
             else:
-                # For other platforms, use their specific scraping methods
-                return []
+                posts = []
+            
+            # Filter posts by date range if specified
+            if date_range and posts:
+                filtered_posts = []
+                start_date = datetime.strptime(date_range["start_date"], "%Y-%m-%d") if date_range.get("start_date") else None
+                end_date = datetime.strptime(date_range["end_date"], "%Y-%m-%d") if date_range.get("end_date") else None
+                
+                for post in posts:
+                    post_date = None
+                    if post.get("timestamp"):
+                        if isinstance(post["timestamp"], str):
+                            post_date = datetime.fromisoformat(post["timestamp"].replace("Z", "+00:00"))
+                        elif isinstance(post["timestamp"], datetime):
+                            post_date = post["timestamp"]
+                    
+                    if post_date:
+                        if start_date and end_date:
+                            if start_date <= post_date <= end_date:
+                                filtered_posts.append(post)
+                        elif start_date:
+                            if post_date >= start_date:
+                                filtered_posts.append(post)
+                        elif end_date:
+                            if post_date <= end_date:
+                                filtered_posts.append(post)
+                        else:
+                            filtered_posts.append(post)
+                    else:
+                        # If no date available, include post
+                        filtered_posts.append(post)
+                
+                return filtered_posts
+            
+            return posts
+            
         except Exception as e:
-            logger.error(f"Error getting recent posts: {e}")
+            logger.error(f"Error getting recent posts for {username} on {platform}: {e}")
             return []
     
     async def _get_network_data(self, platform: PlatformType, username: str) -> Dict[str, Any]:
@@ -1508,4 +1558,6 @@ class SocialMediaScraper:
         except Exception as e:
             logger.error(f"Error in rate limiting: {e}")
             # Default wait time
-            await asyncio.sleep(1.0) 
+            await asyncio.sleep(1.0)
+
+ 

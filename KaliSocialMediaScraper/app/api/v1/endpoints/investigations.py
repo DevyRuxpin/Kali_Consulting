@@ -31,11 +31,11 @@ async def create_investigation(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
-    """Create a new investigation"""
+    """Create a new investigation with real scraping and analysis"""
     try:
         repo = InvestigationRepository(db)
         
-        # Create investigation record
+        # Create investigation record with initial status
         investigation_data = {
             "title": f"Investigation: {request.target_type} - {request.target_value}",
             "description": f"OSINT investigation for {request.target_type}: {request.target_value}",
@@ -46,39 +46,27 @@ async def create_investigation(
             "include_timeline_analysis": request.include_timeline_analysis,
             "include_threat_assessment": request.include_threat_assessment,
             "analysis_options": request.analysis_options,
-            "status": "completed",  # Mark as completed immediately
-            "progress": 100,
+            "status": "running",  # Start as running
+            "progress": 0,
             "created_by_id": 1
         }
         
         investigation = repo.create(investigation_data)
-        
-        # Create basic findings without using the repository methods that expect model instances
-        findings = {
-            "target": request.target_value,
-            "target_type": request.target_type,
-            "analysis_timestamp": datetime.utcnow().isoformat(),
-            "findings": {
-                "basic_info": f"Investigation completed for {request.target_type}: {request.target_value}",
-                "status": "completed",
-                "recommendations": ["Continue monitoring", "Review findings"]
-            }
-        }
-        
-        # Store findings directly in the investigation record
-        if hasattr(investigation, 'analysis_results'):
-            investigation.analysis_results = findings
-        else:
-            # If no analysis_results field, store in a different way
-            logger.info(f"Investigation {investigation.id} completed with findings")
-        
         db.commit()
         
+        # Add background task to run real investigation
+        background_tasks.add_task(
+            run_investigation_background,
+            investigation.id,
+            request,
+            db
+        )
+        
         return InvestigationResult(
-            status=InvestigationStatus.COMPLETED,
-            message="Investigation completed successfully",
+            status=InvestigationStatus.RUNNING,
+            message="Investigation started successfully",
             task_id=f"investigation_{investigation.id}",
-            progress=100,
+            progress=0,
             estimated_completion=None
         )
         
@@ -208,7 +196,7 @@ async def delete_investigation(
         logger.error(f"Error deleting investigation {investigation_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/{investigation_id}/status")
+@router.get("/{investigation_id}/status/")
 async def get_investigation_status(
     investigation_id: int,
     db: Session = Depends(get_db)
@@ -235,7 +223,7 @@ async def get_investigation_status(
         logger.error(f"Error getting investigation status {investigation_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/{investigation_id}/findings")
+@router.get("/{investigation_id}/findings/")
 async def get_investigation_findings(
     investigation_id: int,
     db: Session = Depends(get_db)
@@ -566,6 +554,39 @@ async def run_social_media_investigation(
     try:
         logger.info(f"Running social media investigation for {request.target_value}")
         
+        # Process date range parameters
+        date_range = None
+        if request.search_timeframe == "custom" and request.date_range_start and request.date_range_end:
+            date_range = {
+                "start_date": request.date_range_start,
+                "end_date": request.date_range_end
+            }
+            logger.info(f"Using custom date range: {request.date_range_start} to {request.date_range_end}")
+        elif request.search_timeframe != "all":
+            # Calculate date range based on timeframe
+            from datetime import datetime, timedelta
+            end_date = datetime.now()
+            
+            if request.search_timeframe == "last_24h":
+                start_date = end_date - timedelta(days=1)
+            elif request.search_timeframe == "last_7d":
+                start_date = end_date - timedelta(days=7)
+            elif request.search_timeframe == "last_30d":
+                start_date = end_date - timedelta(days=30)
+            elif request.search_timeframe == "last_90d":
+                start_date = end_date - timedelta(days=90)
+            elif request.search_timeframe == "last_year":
+                start_date = end_date - timedelta(days=365)
+            else:
+                start_date = None
+                
+            if start_date:
+                date_range = {
+                    "start_date": start_date.strftime("%Y-%m-%d"),
+                    "end_date": end_date.strftime("%Y-%m-%d")
+                }
+                logger.info(f"Using timeframe {request.search_timeframe}: {date_range['start_date']} to {date_range['end_date']}")
+        
         # Update progress
         investigation = repo.get(investigation_id)
         if investigation:
@@ -588,8 +609,12 @@ async def run_social_media_investigation(
             try:
                 logger.info(f"Analyzing {request.target_value} on {platform}")
                 
-                # Analyze profile on this platform
-                platform_data = await social_media_scraper.analyze_profile(platform, request.target_value)
+                # Analyze profile on this platform with date range
+                platform_data = await social_media_scraper.analyze_profile(
+                    platform, 
+                    request.target_value,
+                    date_range=date_range
+                )
                 
                 if platform_data and "error" not in platform_data:
                     all_platform_data[platform] = platform_data
@@ -600,7 +625,7 @@ async def run_social_media_investigation(
                         if threat_assessment.get("level") in ["high", "critical"]:
                             threat_indicators.append(f"High threat detected on {platform}")
                     
-                    # Check for suspicious activity
+                    # Check for suspicious activity within date range
                     if platform_data.get("posts"):
                         for post in platform_data["posts"][:10]:  # Check recent posts
                             content = post.get("content", "").lower()
