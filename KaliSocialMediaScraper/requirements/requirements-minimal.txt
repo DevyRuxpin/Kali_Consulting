@@ -1,0 +1,67 @@
+# Core Framework
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+python-multipart
+
+# Web Scraping & Automation
+requests
+aiohttp
+beautifulsoup4
+playwright
+
+# Database & Storage
+sqlalchemy
+alembic
+
+# Data Processing & Analysis
+pandas
+numpy
+
+# OSINT Tools
+dnspython
+python-whois
+phonenumbers
+email-validator
+
+# Network Analysis
+networkx
+
+# Report Generation
+reportlab
+
+# Security & Cryptography
+cryptography
+python-jose[cryptography]
+passlib[bcrypt]
+
+# Web Technologies
+websockets
+aiofiles
+jinja2
+
+# Utilities
+python-dotenv
+click
+rich
+tqdm
+pyyaml
+
+# Development & Testing
+pytest
+pytest-asyncio
+
+# HTTP Client
+httpx
+
+# Time & Date
+python-dateutil
+pytz
+
+# Configuration
+python-decouple
+
+# Monitoring & Logging
+structlog
+loguru 
